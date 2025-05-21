@@ -17,6 +17,10 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 // Mock data for initial rendering
 const mockUsers = [
@@ -27,16 +31,33 @@ const mockUsers = [
   { id: "5", name: "David Okafor", role: "Subject Teacher" as UserRole, email: "david@example.com", status: "Inactive" as const },
 ];
 
+// Create user form schema with validation
+const createUserSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  role: z.enum(["Principal", "Exam Officer", "Form Teacher", "Subject Teacher"])
+});
+
 const UserManagementPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [selectedRole, setSelectedRole] = useState<UserRole>("Subject Teacher");
   const [isProcessing, setIsProcessing] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
+  
+  // Set up the form
+  const form = useForm<z.infer<typeof createUserSchema>>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "Subject Teacher"
+    },
+  });
   
   // Filter users based on search query
   const filteredUsers = mockUsers.filter((user) => 
@@ -45,35 +66,25 @@ const UserManagementPage = () => {
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Invite user function
-  const handleInviteUser = async () => {
-    if (!inviteEmail) {
-      toast({
-        title: "Email required",
-        description: "Please enter an email address",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Create user function
+  const handleCreateUser = async (values: z.infer<typeof createUserSchema>) => {
     setIsProcessing(true);
     
     try {
-      // In a real implementation, you would send an invite email through Supabase or a custom API
+      // In a real implementation, you would create a user through Supabase or a custom API
       // For this demo, we'll just show a success message
       
       toast({
-        title: "Invitation sent",
-        description: `Invitation email sent to ${inviteEmail} with ${selectedRole} role`,
+        title: "User created successfully",
+        description: `Created user ${values.name} with ${values.role} role`,
       });
       
-      setInviteEmail("");
-      setSelectedRole("Subject Teacher");
-      setIsInviteDialogOpen(false);
+      form.reset();
+      setIsCreateUserDialogOpen(false);
     } catch (error: any) {
       toast({
-        title: "Invitation failed",
-        description: error.message || "Could not send invitation",
+        title: "User creation failed",
+        description: error.message || "Could not create user",
         variant: "destructive",
       });
     } finally {
@@ -164,7 +175,7 @@ const UserManagementPage = () => {
               <DialogHeader>
                 <DialogTitle>Import Users</DialogTitle>
                 <DialogDescription>
-                  Upload a CSV file to bulk import users. The CSV should have columns: name, email, role.
+                  Upload a CSV file to bulk import users. The CSV should have columns: name, email, password, role.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -178,11 +189,11 @@ const UserManagementPage = () => {
                 <div className="text-sm text-muted-foreground">
                   <p>Expected CSV format:</p>
                   <pre className="mt-2 p-2 bg-slate-100 rounded text-xs">
-                    name,email,role
+                    name,email,password,role
                     <br />
-                    John Doe,john@school.com,Principal
+                    John Doe,john@school.com,securepass,Principal
                     <br />
-                    Jane Smith,jane@school.com,Exam Officer
+                    Jane Smith,jane@school.com,password123,Exam Officer
                   </pre>
                 </div>
               </div>
@@ -194,59 +205,99 @@ const UserManagementPage = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+          <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <UserPlus className="h-4 w-4 mr-2" />
-                Invite User
+                Create User
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Invite New User</DialogTitle>
+                <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
-                  Send an invitation email to add a new staff member to the system.
+                  Add a new staff member to the system with their role and credentials.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="col-span-3"
-                    placeholder="staff@school.com"
+              
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4 py-2">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">
-                    Role
-                  </Label>
-                  <Select
-                    value={selectedRole}
-                    onValueChange={(value) => setSelectedRole(value as UserRole)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Principal">Principal</SelectItem>
-                      <SelectItem value="Exam Officer">Exam Officer</SelectItem>
-                      <SelectItem value="Form Teacher">Form Teacher</SelectItem>
-                      <SelectItem value="Subject Teacher">Subject Teacher</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleInviteUser} disabled={isProcessing}>
-                  {isProcessing ? "Sending..." : "Send Invitation"}
-                </Button>
-              </DialogFooter>
+                  
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="staff@school.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Principal">Principal</SelectItem>
+                            <SelectItem value="Exam Officer">Exam Officer</SelectItem>
+                            <SelectItem value="Form Teacher">Form Teacher</SelectItem>
+                            <SelectItem value="Subject Teacher">Subject Teacher</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter className="pt-4">
+                    <Button type="submit" disabled={isProcessing}>
+                      {isProcessing ? "Creating..." : "Create User"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
 
