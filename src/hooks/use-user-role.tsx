@@ -55,6 +55,11 @@ export function useUserRole() {
       return true; // Super admin has access to everything
     }
     
+    // Check if user was marked as super admin during registration
+    if (user?.user_metadata?.is_super_admin === true) {
+      return true; // User was registered from /signup, grant super admin access
+    }
+    
     const permissionEntry = rolePermissionMatrix.find(p => p.name === feature);
     if (!permissionEntry) return false;
     

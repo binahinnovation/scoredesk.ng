@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
@@ -111,6 +112,9 @@ export function useAuth() {
 
   const signup = async (email: string, password: string, schoolData: SchoolData) => {
     try {
+      // Mark user as super admin if registering from /signup
+      let isSuperAdmin = window.location.pathname === '/signup';
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -118,6 +122,7 @@ export function useAuth() {
           data: {
             full_name: schoolData.fullName,
             school_name: schoolData.schoolName,
+            is_super_admin: isSuperAdmin, // Store this flag in user metadata
           },
         },
       });
@@ -133,7 +138,9 @@ export function useAuth() {
 
       toast({
         title: "Account created",
-        description: "Welcome to ScoreDesk!",
+        description: isSuperAdmin 
+          ? "Welcome to ScoreDesk! You have been granted Super Admin privileges."
+          : "Welcome to ScoreDesk!",
       });
       return { success: true, data };
     } catch (error: any) {
