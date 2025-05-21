@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -17,26 +18,37 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-8 text-center animate-fade-in">
           <Link to="/" className="inline-block mb-6">
-            <span className="font-bold text-3xl text-emerald-700">ScoreDesk</span>
+            <div className="flex items-center justify-center space-x-2">
+              <div className="bg-emerald-700 text-white p-2 rounded-lg">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <span className="font-bold text-3xl text-emerald-700">ScoreDesk</span>
+            </div>
           </Link>
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="text-muted-foreground">Sign in to your account</p>
         </div>
         
-        <Card>
+        <Card className="shadow-xl animate-slide-in hover-scale">
           <form onSubmit={handleLogin}>
-            <CardHeader>
-              <CardTitle>Login</CardTitle>
-              <CardDescription>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl text-center">Login</CardTitle>
+              <CardDescription className="text-center">
                 Enter your email and password to access your ScoreDesk account
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="name@school.com" required />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="name@school.com" 
+                  required 
+                  className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -45,22 +57,34 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <Input id="password" type="password" required />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  required 
+                  className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col">
-              <Button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800">
+              <Button 
+                type="submit" 
+                className="w-full bg-emerald-700 hover:bg-emerald-800 shadow-md"
+              >
                 Sign In
               </Button>
               <p className="mt-4 text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link to="/signup" className="text-emerald-700 hover:underline">
+                <Link to="/signup" className="text-emerald-700 hover:text-emerald-800 hover:underline font-medium">
                   Sign up
                 </Link>
               </p>
             </CardFooter>
           </form>
         </Card>
+        
+        <div className="mt-8 text-center text-sm text-gray-500">
+          <p>Protected by industry standard encryption</p>
+        </div>
       </div>
     </div>
   );
