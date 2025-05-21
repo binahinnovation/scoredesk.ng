@@ -8,11 +8,23 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import Dashboard from "./pages/Dashboard";
+import ProfileSettings from "./pages/ProfileSettings";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
 import { useAuth } from "./hooks/use-auth";
+import { useEffect } from "react";
+import { initStorage } from "./integrations/supabase/storage";
 
 const queryClient = new QueryClient();
+
+// Initialize storage buckets
+const StorageInitializer = () => {
+  useEffect(() => {
+    initStorage().catch(console.error);
+  }, []);
+  
+  return null;
+};
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -43,6 +55,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       }>
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="profile" element={<ProfileSettings />} />
         {/* Add more dashboard routes here */}
       </Route>
       
@@ -58,6 +71,7 @@ const App = () => {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <StorageInitializer />
           <Toaster />
           <Sonner />
           <AppRoutes />
