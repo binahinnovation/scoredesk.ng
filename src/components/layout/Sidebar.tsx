@@ -59,7 +59,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -77,7 +77,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -95,7 +95,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -113,7 +113,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -131,7 +131,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -149,7 +149,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -177,7 +177,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80",
+                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
