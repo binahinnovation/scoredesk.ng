@@ -64,22 +64,22 @@ export function useAuth() {
       if (error) {
         console.error('Error fetching user role:', error);
         
-        // Fallback check for super admin emails
-        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+        // Check for super admin emails directly
+        const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
         
-        if (!userError && userData && userData.user) {
-          const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-          if (superAdmins.includes(userData.user.email || '')) {
-            setUserRole('Principal');
-            return;
-          }
-          
-          // Check for super admin flag in metadata
-          if (userData.user.user_metadata?.is_super_admin === true) {
-            setUserRole('Principal');
-            return;
-          }
+        // Get user email from current user object
+        if (user?.email && superAdmins.includes(user.email)) {
+          setUserRole('Principal');
+          return;
         }
+        
+        // Check for super admin flag in metadata
+        if (user?.user_metadata?.is_super_admin === true) {
+          setUserRole('Principal');
+          return;
+        }
+        
+        setUserRole(null);
       } else if (data) {
         setUserRole(data as UserRole);
       }

@@ -30,9 +30,9 @@ export function useUserRole() {
           // Fallback for super admin emails
           const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
           if (user.email && superAdmins.includes(user.email)) {
-            setUserRole('Principal');
+            setUserRole('Principal' as UserRole);
           } else if (user.user_metadata?.is_super_admin === true) {
-            setUserRole('Principal');
+            setUserRole('Principal' as UserRole);
           } else {
             setUserRole(null);
           }
