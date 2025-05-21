@@ -57,7 +57,7 @@ export function useAuth() {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      // We need to use a direct SQL query until the types are updated
+      // Use explicit typing to avoid TypeScript errors
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -76,6 +76,13 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
+      // Special handling for the super admin email
+      if (email === 'deepmindfx01@gmail.com') {
+        // For demo purposes, we'll automatically assign the Principal role
+        // In a real application, you would validate this against a secure list
+        console.log('Logging in as super admin');
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { UserRole } from '@/types/user';
 import { toast } from '@/components/ui/use-toast';
+import { rolePermissionMatrix } from '@/types/user';
 
 export function useUserRole() {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -19,7 +20,7 @@ export function useUserRole() {
       }
 
       try {
-        // We need to use a direct SQL query until the types are updated
+        // Use explicit typing to avoid TypeScript errors
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
@@ -29,7 +30,7 @@ export function useUserRole() {
         if (error) {
           console.error('Error fetching user role:', error);
           setUserRole(null);
-        } else {
+        } else if (data) {
           setUserRole(data.role as UserRole);
         }
       } catch (error: any) {
@@ -51,6 +52,11 @@ export function useUserRole() {
   const hasPermission = (feature: string) => {
     if (!userRole) return false;
     
+    // Special case for super admin
+    if (user?.email === 'deepmindfx01@gmail.com') {
+      return true; // Super admin has access to everything
+    }
+    
     const permissionEntry = rolePermissionMatrix.find(p => p.name === feature);
     if (!permissionEntry) return false;
     
@@ -70,18 +76,3 @@ export function useUserRole() {
 
   return { userRole, loading, hasPermission };
 }
-
-export const rolePermissionMatrix = [
-  { name: "Dashboard", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: true },
-  { name: "User Management", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
-  { name: "Student Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },
-  { name: "Class/Subject Setup", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Result Upload", principal: false, examOfficer: false, formTeacher: false, subjectTeacher: true },
-  { name: "Result Approval", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Position & Ranking", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Report Card Designer", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "School Branding", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
-  { name: "Scratch Card Generator", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Analytics Dashboard", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Settings", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
-];
