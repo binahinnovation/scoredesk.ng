@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { BarChart3, BookOpen, GraduationCap, LineChart, Settings, Shield, Trophy, Users } from "lucide-react";
@@ -7,7 +6,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-emerald-50">
+    <div className="min-h-screen font-roboto bg-gradient-to-b from-white to-emerald-50">
       {/* Enhanced Header */}
       <header className="container mx-auto flex items-center justify-between p-6">
         <div className="flex items-center space-x-2">
@@ -80,57 +79,65 @@ export default function LandingPage() {
         <section className="bg-white py-20">
           <div className="container mx-auto px-6">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold mb-4">Why Choose ScoreDesk?</h2>
-              <div className="h-1 w-24 bg-emerald-700 mx-auto rounded-full"></div>
+              <span className="text-emerald-600 font-medium">POWERFUL FEATURES</span>
+              <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-4">Why Choose ScoreDesk?</h2>
+              <div className="h-1 w-24 bg-emerald-700 mx-auto rounded-full mb-4"></div>
+              <p className="max-w-2xl mx-auto text-gray-600">Our powerful yet intuitive platform is designed specifically for Nigerian schools with features that simplify result management.</p>
             </div>
             
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <Users className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <Users className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Multi-School Support</h3>
-                <p className="text-gray-600">Each school gets their unique environment with custom logos, term settings, and user management.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Multi-School Support</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Each school gets their unique environment with custom logos, term settings, and user management.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
               
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <Shield className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <Shield className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Role-Based Access</h3>
-                <p className="text-gray-600">Different user roles with appropriate permissions for principals, teachers, and administrators.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Role-Based Access</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Different user roles with appropriate permissions for principals, teachers, and administrators.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
               
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <Trophy className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <Trophy className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Nigerian-Style Grading</h3>
-                <p className="text-gray-600">Auto-calculate class positions with tied ranking support and customizable grading systems.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Nigerian-Style Grading</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Auto-calculate class positions with tied ranking support and customizable grading systems.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
               
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <Settings className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <Settings className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Customizable Templates</h3>
-                <p className="text-gray-600">Choose from pre-designed report card templates or create your own with our drag-and-drop builder.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Customizable Templates</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Choose from pre-designed report card templates or create your own with our drag-and-drop builder.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
               
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <GraduationCap className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <GraduationCap className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Student Result Portal</h3>
-                <p className="text-gray-600">Generate scratch cards for students and parents to access results securely.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Student Result Portal</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Generate scratch cards for students and parents to access results securely.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
               
-              <div className="bg-emerald-50 p-6 rounded-xl shadow-sm feature-card card-shadow">
-                <div className="bg-emerald-100 p-3 rounded-lg inline-block mb-4">
-                  <BarChart3 className="h-6 w-6 text-emerald-700" />
+              <div className="group bg-white p-8 rounded-xl shadow-lg hover:shadow-xl border-b-4 border-transparent hover:border-emerald-500 transition-all duration-300 feature-card">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-full inline-flex mb-6 group-hover:bg-emerald-100 transition-all duration-300">
+                  <BarChart3 className="h-7 w-7 text-emerald-700" />
                 </div>
-                <h3 className="font-bold text-xl mb-3">Analytics Dashboard</h3>
-                <p className="text-gray-600">Track subject performance, class averages, and identify areas for improvement.</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-800">Analytics Dashboard</h3>
+                <p className="text-gray-600 group-hover:text-gray-700 transition-colors">Track subject performance, class averages, and identify areas for improvement.</p>
+                <div className="mt-4 h-1 w-10 bg-emerald-200 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-300"></div>
               </div>
             </div>
           </div>
@@ -161,7 +168,7 @@ export default function LandingPage() {
       </main>
       
       {/* Enhanced Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="bg-gray-900 text-white py-16 font-roboto">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between">
             <div className="mb-8 md:mb-0">
