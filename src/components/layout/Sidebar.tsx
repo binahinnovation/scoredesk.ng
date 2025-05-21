@@ -4,13 +4,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  BarChart3, 
-  BookOpen, 
-  GraduationCap, 
+  LayoutDashboard, 
+  Wallet, 
+  FileText, 
+  Banknote,
+  ExternalLink,
+  Database,
   Settings, 
-  Users, 
-  School 
+  HelpCircle, 
+  LogOut 
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   open?: boolean;
@@ -18,94 +22,173 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Sidebar({ className, open, setOpen }: SidebarProps) {
+  const { logout } = useAuth();
+  
   return (
-    <div className={cn("pb-12", className)}>
+    <div className={cn("pb-12 bg-[#023047] text-white", className)}>
       <div className="space-y-4 py-4">
+        {/* User Profile Section */}
+        <div className="px-6 py-4 flex flex-col items-center border-b border-white/10">
+          <div className="h-16 w-16 rounded-full bg-emerald-500 flex items-center justify-center text-white text-2xl font-bold mb-3">
+            M
+          </div>
+          <h3 className="font-semibold text-lg">Muhammad Ismail</h3>
+          <p className="text-sm text-gray-300 mb-2">abberhismael@gmail.com</p>
+          <span className="bg-teal-600 text-xs px-3 py-1 rounded-md">ADMIN</span>
+        </div>
+        
         <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-            Dashboard
-          </h2>
           <div className="space-y-1">
+            {/* Ice Data Services */}
+            <NavLink to="/ice-data" className="block">
+              {({ isActive }) => (
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
+                >
+                  <Database className="mr-3 h-5 w-5" />
+                  Ice data services
+                  <div className="ml-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </Button>
+              )}
+            </NavLink>
+            
+            {/* Dashboard */}
             <NavLink to="/dashboard">
               {({ isActive }) => (
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
                 >
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Overview
+                  <LayoutDashboard className="mr-3 h-5 w-5" />
+                  Dashboard
                 </Button>
               )}
             </NavLink>
-            <NavLink to="/students">
+            
+            {/* Wallet */}
+            <NavLink to="/wallet">
               {({ isActive }) => (
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
                 >
-                  <Users className="mr-2 h-4 w-4" />
-                  Students
+                  <Wallet className="mr-3 h-5 w-5" />
+                  Wallet
                 </Button>
               )}
             </NavLink>
-            <NavLink to="/teachers">
+            
+            {/* Transactions */}
+            <NavLink to="/transactions">
               {({ isActive }) => (
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
                 >
-                  <GraduationCap className="mr-2 h-4 w-4" />
-                  Teachers
+                  <FileText className="mr-3 h-5 w-5" />
+                  Transactions
                 </Button>
               )}
             </NavLink>
-            <NavLink to="/classes">
+            
+            {/* Settlements */}
+            <NavLink to="/settlements">
               {({ isActive }) => (
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
                 >
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Classes
+                  <Banknote className="mr-3 h-5 w-5" />
+                  Settlements
+                </Button>
+              )}
+            </NavLink>
+            
+            {/* Monnify Status */}
+            <NavLink to="/monnify-status">
+              {({ isActive }) => (
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start py-6 rounded-md text-base",
+                    isActive 
+                      ? "bg-teal-600 text-white hover:bg-teal-700" 
+                      : "text-white hover:bg-[#034567] hover:text-white"
+                  )}
+                  size="lg"
+                >
+                  <ExternalLink className="mr-3 h-5 w-5" />
+                  Monnify Status
                 </Button>
               )}
             </NavLink>
           </div>
         </div>
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-            Settings
-          </h2>
-          <div className="space-y-1">
-            <NavLink to="/profile">
-              {({ isActive }) => (
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
-                >
-                  <School className="mr-2 h-4 w-4" />
-                  School Profile
-                </Button>
-              )}
-            </NavLink>
+        
+        {/* Bottom Navigation */}
+        <div className="absolute bottom-0 left-0 right-0 flex justify-around py-4 bg-[#012437]">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full h-12 w-12 bg-[#023047] hover:bg-[#034567]"
+          >
+            <HelpCircle className="h-6 w-6" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="rounded-full h-12 w-12 bg-[#023047] hover:bg-[#034567]"
+            asChild
+          >
             <NavLink to="/settings">
-              {({ isActive }) => (
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  size="sm"
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  System Settings
-                </Button>
-              )}
+              <Settings className="h-6 w-6" />
             </NavLink>
-          </div>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full h-12 w-12 bg-[#023047] hover:bg-[#034567]"
+            onClick={() => logout()}
+          >
+            <LogOut className="h-6 w-6" />
+          </Button>
         </div>
       </div>
     </div>

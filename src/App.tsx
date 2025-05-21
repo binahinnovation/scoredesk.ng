@@ -14,6 +14,12 @@ import MainLayout from "./components/layout/MainLayout";
 import { useAuth } from "./hooks/use-auth";
 import { useEffect } from "react";
 import { initStorage } from "./integrations/supabase/storage";
+import WalletPage from "./pages/WalletPage";
+import TransactionsPage from "./pages/TransactionsPage";
+import SettlementsPage from "./pages/SettlementsPage";
+import MonnifyStatusPage from "./pages/MonnifyStatusPage";
+import IceDataPage from "./pages/IceDataPage";
+import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +62,12 @@ const AppRoutes = () => {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="profile" element={<ProfileSettings />} />
+        <Route path="wallet" element={<WalletPage />} />
+        <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="settlements" element={<SettlementsPage />} />
+        <Route path="monnify-status" element={<MonnifyStatusPage />} />
+        <Route path="ice-data" element={<IceDataPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         {/* Add more dashboard routes here */}
       </Route>
       
