@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { Toaster } from "@/components/ui/toaster";
 
 export default function MainLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
   
   // Animation effect on initial load
@@ -19,8 +19,8 @@ export default function MainLayout() {
       <MainNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-        <main className="flex-1 pt-16 pb-12 transition-all duration-300 ease-in-out">
-          <div className={`transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+        <main className={`flex-1 pt-16 pb-12 transition-all duration-300 ease-in-out ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
+          <div className={`p-6 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
             <Outlet />
           </div>
         </main>

@@ -11,6 +11,12 @@ import Dashboard from "./pages/Dashboard";
 import ProfileSettings from "./pages/ProfileSettings";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
+import WalletPage from "./pages/wallet/WalletPage";
+import TransactionsPage from "./pages/transactions/TransactionsPage";
+import SettlementsPage from "./pages/settlements/SettlementsPage";
+import MonnifyStatusPage from "./pages/monnify/MonnifyStatusPage";
+import IceDataPage from "./pages/icedata/IceDataPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 import { useAuth } from "./hooks/use-auth";
 import { useEffect } from "react";
 import { initStorage } from "./integrations/supabase/storage";
@@ -56,6 +62,12 @@ const AppRoutes = () => {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="profile" element={<ProfileSettings />} />
+        <Route path="wallet" element={<WalletPage />} />
+        <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="settlements" element={<SettlementsPage />} />
+        <Route path="monnify" element={<MonnifyStatusPage />} />
+        <Route path="icedata" element={<IceDataPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         {/* Add more dashboard routes here */}
       </Route>
       
