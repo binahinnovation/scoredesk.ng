@@ -1,22 +1,36 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Will connect to Supabase auth later
-    navigate("/dashboard");
+    setIsLoading(true);
+    
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate("/dashboard");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4 font-roboto">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center animate-fade-in">
           <Link to="/" className="inline-block mb-6">
@@ -48,6 +62,9 @@ export default function LoginPage() {
                   placeholder="name@school.com" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -62,6 +79,9 @@ export default function LoginPage() {
                   type="password" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>
@@ -69,8 +89,9 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full bg-emerald-700 hover:bg-emerald-800 shadow-md"
+                disabled={isLoading}
               >
-                Sign In
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
               <p className="mt-4 text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}

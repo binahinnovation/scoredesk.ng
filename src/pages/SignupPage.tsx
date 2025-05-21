@@ -1,22 +1,64 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, School } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { signup } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [schoolName, setSchoolName] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
-  const handleSignup = (e: React.FormEvent) => {
+  const validatePasswords = () => {
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return false;
+    }
+    if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Will connect to Supabase auth later
-    navigate("/dashboard");
+    
+    if (!validatePasswords()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const schoolData = {
+        schoolName,
+        fullName,
+      };
+      
+      const result = await signup(email, password, schoolData);
+      
+      if (result.success) {
+        navigate("/dashboard");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4 font-roboto">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center animate-fade-in">
           <Link to="/" className="inline-block mb-6">
@@ -50,6 +92,9 @@ export default function SignupPage() {
                   placeholder="Green Valley School" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={schoolName}
+                  onChange={(e) => setSchoolName(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -59,6 +104,9 @@ export default function SignupPage() {
                   placeholder="John Doe" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -69,6 +117,9 @@ export default function SignupPage() {
                   placeholder="name@school.com" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -78,6 +129,9 @@ export default function SignupPage() {
                   type="password" 
                   required 
                   className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -86,16 +140,23 @@ export default function SignupPage() {
                   id="confirmPassword" 
                   type="password" 
                   required 
-                  className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  className={`transition-all focus-within:ring-1 focus-within:ring-emerald-500 ${passwordError ? 'border-red-500' : ''}`}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
                 />
+                {passwordError && (
+                  <p className="text-sm text-red-500 mt-1">{passwordError}</p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col">
               <Button 
                 type="submit" 
                 className="w-full bg-emerald-700 hover:bg-emerald-800 shadow-md"
+                disabled={isLoading}
               >
-                Create Account
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
               <p className="mt-4 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}

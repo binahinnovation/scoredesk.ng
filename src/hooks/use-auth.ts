@@ -1,34 +1,144 @@
 
 import { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
 
-// Placeholder for future Supabase auth integration
+export type SchoolData = {
+  schoolName: string;
+  fullName: string;
+};
+
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // This will be implemented once Supabase is connected
-    // It will listen for auth state changes
-    setLoading(false);
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+        setLoading(false);
+      }
+    );
+
+    // Check current session on mount
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user || null);
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Mock login and signup functions for now
   const login = async (email: string, password: string) => {
-    // Will be implemented with Supabase
-    console.log('Login attempt:', email);
-    return { success: true };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { success: false, error: error.message };
+      }
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome back to ScoreDesk!",
+      });
+      return { success: true, data };
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
   };
 
-  const signup = async (email: string, password: string, schoolData: any) => {
-    // Will be implemented with Supabase
-    console.log('Signup attempt:', email, schoolData);
-    return { success: true };
+  const signup = async (email: string, password: string, schoolData: SchoolData) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: schoolData.fullName,
+            school_name: schoolData.schoolName,
+          },
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Signup failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { success: false, error: error.message };
+      }
+
+      toast({
+        title: "Account created",
+        description: "Welcome to ScoreDesk!",
+      });
+      return { success: true, data };
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
   };
 
   const logout = async () => {
-    // Will be implemented with Supabase
-    console.log('Logout attempt');
-    return { success: true };
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast({
+          title: "Logout failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { success: false, error: error.message };
+      }
+      
+      setUser(null);
+      navigate('/login');
+      toast({
+        title: "Logged out",
+        description: "You've been successfully logged out",
+      });
+      return { success: true };
+    } catch (error: any) {
+      toast({
+        title: "Logout failed",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    }
   };
 
   return {

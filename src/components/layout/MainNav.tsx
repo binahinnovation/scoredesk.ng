@@ -1,13 +1,24 @@
 
 import { Button } from "@/components/ui/button";
-import { Menu, Bell, User } from "lucide-react";
+import { Menu, Bell, User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MainNavProps {
   onMenuClick: () => void;
 }
 
 export function MainNav({ onMenuClick }: MainNavProps) {
+  const { user, logout } = useAuth();
+
   return (
     <header className="fixed top-0 z-40 w-full border-b bg-background shadow-sm">
       <div className="container flex h-16 items-center">
@@ -37,13 +48,39 @@ export function MainNav({ onMenuClick }: MainNavProps) {
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500"></span>
             </Button>
             
-            <Button variant="ghost" size="icon" className="rounded-full" asChild>
-              <Link to="/profile">
-                <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-medium">
-                  U
-                </div>
-              </Link>
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-medium overflow-hidden">
+                      {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => logout()} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="ghost" size="icon" className="rounded-full" asChild>
+                <Link to="/login">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-medium">
+                    <User className="h-4 w-4" />
+                  </div>
+                </Link>
+              </Button>
+            )}
           </nav>
         </div>
       </div>
