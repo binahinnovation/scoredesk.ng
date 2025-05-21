@@ -57,7 +57,7 @@ export function useAuth() {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      // Using raw SQL query to avoid TypeScript errors with unrecognized tables
+      // Using RPC function to get user role
       const { data, error } = await supabase
         .rpc('get_user_role', { user_id_param: userId });
 

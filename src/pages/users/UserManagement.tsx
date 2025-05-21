@@ -35,7 +35,7 @@ const UserManagementPage = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole>("Subject Teacher");
   const [isProcessing, setIsProcessing] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const { userRole, loading } = useUserRole();
+  const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
   
   // Filter users based on search query
@@ -115,12 +115,22 @@ const UserManagementPage = () => {
     }
   };
 
+  // Check if user is a super admin either by email or metadata
+  const isSuperAdmin = () => {
+    const superAdminEmails = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
+    return (
+      userRole === 'Principal' || 
+      (user?.email && superAdminEmails.includes(user.email)) ||
+      user?.user_metadata?.is_super_admin === true
+    );
+  };
+
   // Role-based access control
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading user permissions...</div>;
   }
 
-  if (userRole !== "Principal") {
+  if (!isSuperAdmin()) {
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
