@@ -57,6 +57,7 @@ export function useAuth() {
 
   const fetchUserRole = async (userId: string) => {
     try {
+      // We need to use a direct SQL query until the types are updated
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')

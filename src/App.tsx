@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import React from "react"; // Add React import explicitly
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -27,6 +28,7 @@ import ScratchCards from "./pages/scratchcards/ScratchCards";
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
 
+// Create a new client
 const queryClient = new QueryClient();
 
 // Initialize storage buckets
@@ -85,19 +87,21 @@ const AppRoutes = () => {
   );
 };
 
-// App component
+// App component - Make sure we explicitly wrap in React.StrictMode
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <StorageInitializer />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <StorageInitializer />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 };
 

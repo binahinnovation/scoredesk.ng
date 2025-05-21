@@ -1,25 +1,7 @@
 
-import { User } from "@supabase/supabase-js";
-
 export type UserRole = 'Principal' | 'Exam Officer' | 'Form Teacher' | 'Subject Teacher';
 
-export interface StaffUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  status: 'Active' | 'Inactive' | 'Pending';
-}
-
-export interface UserRolePermission {
-  name: string;
-  principal: boolean;
-  examOfficer: boolean;
-  formTeacher: boolean;
-  subjectTeacher: boolean;
-}
-
-export const rolePermissionMatrix: UserRolePermission[] = [
+export const rolePermissionMatrix = [
   { name: "Dashboard", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: true },
   { name: "User Management", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
   { name: "Student Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },

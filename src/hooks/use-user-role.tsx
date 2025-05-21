@@ -19,6 +19,7 @@ export function useUserRole() {
       }
 
       try {
+        // We need to use a direct SQL query until the types are updated
         const { data, error } = await supabase
           .from('user_roles')
           .select('role')
