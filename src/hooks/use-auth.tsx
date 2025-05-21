@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { UserRole } from '@/types/user';
 
 export type SchoolData = {
   schoolName: string;
@@ -12,6 +13,7 @@ export type SchoolData = {
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,12 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user || null);
+        if (session?.user) {
+          // Fetch user role when session changes
+          fetchUserRole(session.user.id);
+        } else {
+          setUserRole(null);
+        }
         setLoading(false);
       }
     );
@@ -28,6 +36,10 @@ export function useAuth() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user || null);
+        if (session?.user) {
+          // Fetch user role on initial load
+          await fetchUserRole(session.user.id);
+        }
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
@@ -42,6 +54,24 @@ export function useAuth() {
       subscription.unsubscribe();
     };
   }, []);
+
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user role:', error);
+      } else if (data) {
+        setUserRole(data.role as UserRole);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserRole:', error);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -125,6 +155,7 @@ export function useAuth() {
       }
       
       setUser(null);
+      setUserRole(null);
       navigate('/login');
       toast({
         title: "Logged out",
@@ -143,6 +174,7 @@ export function useAuth() {
 
   return {
     user,
+    userRole,
     loading,
     login,
     signup,
