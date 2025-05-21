@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Upload, Search, UserPlus, FilePlus, AlertCircle } from "lucide-react";
+import { Plus, Upload, Search, UserPlus, FilePlus, AlertCircle, Pencil, UserX } from "lucide-react";
 import { RoleLabel } from "@/components/RoleLabel";
 import { UserStatusBadge } from "@/components/UserStatusBadge";
 import { UserRole, rolePermissionMatrix } from "@/types/user";
@@ -22,15 +22,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-// Mock data for initial rendering
-const mockUsers = [
-  { id: "1", name: "John Adebayo", role: "Principal" as UserRole, email: "john@example.com", status: "Active" as const },
-  { id: "2", name: "Sarah Nwosu", role: "Exam Officer" as UserRole, email: "sarah@example.com", status: "Active" as const },
-  { id: "3", name: "Michael Okoro", role: "Form Teacher" as UserRole, email: "michael@example.com", status: "Active" as const },
-  { id: "4", name: "Chioma Eze", role: "Subject Teacher" as UserRole, email: "chioma@example.com", status: "Active" as const },
-  { id: "5", name: "David Okafor", role: "Subject Teacher" as UserRole, email: "david@example.com", status: "Inactive" as const },
-];
-
 // Create user form schema with validation
 const createUserSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -39,17 +30,38 @@ const createUserSchema = z.object({
   role: z.enum(["Principal", "Exam Officer", "Form Teacher", "Subject Teacher"])
 });
 
+// Update user form schema with validation
+const updateUserSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  role: z.enum(["Principal", "Exam Officer", "Form Teacher", "Subject Teacher"]),
+  status: z.enum(["Active", "Inactive"])
+});
+
+// Type for users from Supabase
+type UserData = {
+  id: string;
+  name: string;
+  role: UserRole;
+  email: string;
+  status: 'Active' | 'Inactive';
+  created_at?: string;
+};
+
 const UserManagementPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
   
-  // Set up the form
-  const form = useForm<z.infer<typeof createUserSchema>>({
+  // Set up the forms
+  const createForm = useForm<z.infer<typeof createUserSchema>>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       name: "",
@@ -59,8 +71,83 @@ const UserManagementPage = () => {
     },
   });
   
+  const editForm = useForm<z.infer<typeof updateUserSchema>>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: {
+      name: "",
+      role: "Subject Teacher",
+      status: "Active"
+    },
+  });
+  
+  // Fetch users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Fetch users from Supabase
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      // Get users from the profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: "Error fetching users",
+          description: error.message,
+          variant: "destructive",
+        });
+        setUsers([]);
+      } else if (data) {
+        // Fetch user roles for each user
+        const usersWithRoles = await Promise.all(
+          data.map(async (profile) => {
+            // Get user role
+            const { data: roleData, error: roleError } = await supabase
+              .rpc('get_user_role', { user_id_param: profile.id });
+            
+            // Get user email from auth users
+            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(profile.id);
+            
+            let role: UserRole = 'Subject Teacher';
+            if (!roleError && roleData) {
+              role = roleData as UserRole;
+            } else if (userData?.user?.user_metadata?.is_super_admin) {
+              role = 'Principal';
+            }
+
+            return {
+              id: profile.id,
+              name: profile.full_name || 'Unknown',
+              role: role,
+              email: userData?.user?.email || 'unknown@email.com',
+              status: 'Active',
+              created_at: profile.created_at
+            };
+          })
+        );
+
+        setUsers(usersWithRoles);
+      }
+    } catch (error: any) {
+      console.error('Error in fetchUsers:', error);
+      toast({
+        title: "Error fetching users",
+        description: error.message || "Could not fetch users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Filter users based on search query
-  const filteredUsers = mockUsers.filter((user) => 
+  const filteredUsers = users.filter((user) => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
@@ -71,20 +158,134 @@ const UserManagementPage = () => {
     setIsProcessing(true);
     
     try {
-      // In a real implementation, you would create a user through Supabase or a custom API
-      // For this demo, we'll just show a success message
+      // First, create the user in Supabase auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: values.email,
+        password: values.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: values.name,
+          role: values.role
+        }
+      });
+
+      if (authError) {
+        toast({
+          title: "User creation failed",
+          description: authError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!authData.user) {
+        toast({
+          title: "User creation failed",
+          description: "Could not create user",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Insert the user's role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: values.role
+        });
+
+      if (roleError) {
+        console.error('Error setting user role:', roleError);
+      }
       
       toast({
         title: "User created successfully",
         description: `Created user ${values.name} with ${values.role} role`,
       });
       
-      form.reset();
+      createForm.reset();
       setIsCreateUserDialogOpen(false);
+      
+      // Refresh user list
+      fetchUsers();
     } catch (error: any) {
       toast({
         title: "User creation failed",
         description: error.message || "Could not create user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle edit user button click
+  const handleEditClick = (userData: UserData) => {
+    setSelectedUser(userData);
+    editForm.reset({
+      name: userData.name,
+      role: userData.role,
+      status: userData.status
+    });
+    setIsEditUserDialogOpen(true);
+  };
+
+  // Handle update user
+  const handleUpdateUser = async (values: z.infer<typeof updateUserSchema>) => {
+    if (!selectedUser) return;
+    
+    setIsProcessing(true);
+    try {
+      // Update user profile (name)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: values.name })
+        .eq('id', selectedUser.id);
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        toast({
+          title: "Update failed",
+          description: profileError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .update({ role: values.role })
+        .eq('user_id', selectedUser.id);
+
+      if (roleError) {
+        console.error('Error updating role:', roleError);
+      }
+
+      // For status updates, you might need to disable/enable the user in auth
+      if (values.status === 'Inactive') {
+        await supabase.auth.admin.updateUserById(selectedUser.id, {
+          ban_duration: '87600h' // 10 years
+        });
+      } else if (values.status === 'Active') {
+        await supabase.auth.admin.updateUserById(selectedUser.id, {
+          ban_duration: null
+        });
+      }
+      
+      toast({
+        title: "User updated",
+        description: `User ${values.name} has been updated successfully`,
+      });
+      
+      setIsEditUserDialogOpen(false);
+      // Refresh user list
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message || "Could not update user",
         variant: "destructive",
       });
     } finally {
@@ -106,15 +307,64 @@ const UserManagementPage = () => {
     setIsProcessing(true);
     
     try {
-      // In a real implementation, you would process the CSV
-      // For this demo, we'll just show a success message
+      // Parse CSV content
+      const fileContent = await csvFile.text();
+      const lines = fileContent.split('\n');
+      const headers = lines[0].split(',');
+      
+      // Check if headers are valid
+      const expectedHeaders = ['name', 'email', 'password', 'role'];
+      if (!expectedHeaders.every(header => headers.includes(header))) {
+        throw new Error('Invalid CSV format. Expected headers: name, email, password, role');
+      }
+      
+      // Create users from CSV
+      let createdCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const values = lines[i].split(',');
+        const userData = {
+          name: values[0].trim(),
+          email: values[1].trim(),
+          password: values[2].trim(),
+          role: values[3].trim() as UserRole
+        };
+        
+        if (!userData.email || !userData.password) continue;
+        
+        // Create user
+        const { data, error } = await supabase.auth.admin.createUser({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: userData.name,
+            role: userData.role
+          }
+        });
+        
+        if (!error && data.user) {
+          createdCount++;
+          
+          // Set user role
+          await supabase
+            .from('user_roles')
+            .insert({
+              user_id: data.user.id,
+              role: userData.role
+            });
+        }
+      }
       
       toast({
-        title: "CSV uploaded",
-        description: `Successfully processed ${csvFile.name}`,
+        title: "CSV processed",
+        description: `Successfully created ${createdCount} users`,
       });
       
       setCsvFile(null);
+      // Refresh user list
+      fetchUsers();
     } catch (error: any) {
       toast({
         title: "Upload failed",
@@ -220,10 +470,10 @@ const UserManagementPage = () => {
                 </DialogDescription>
               </DialogHeader>
               
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleCreateUser)} className="space-y-4 py-2">
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(handleCreateUser)} className="space-y-4 py-2">
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
@@ -237,7 +487,7 @@ const UserManagementPage = () => {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -251,7 +501,7 @@ const UserManagementPage = () => {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>
@@ -265,7 +515,7 @@ const UserManagementPage = () => {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={createForm.control}
                     name="role"
                     render={({ field }) => (
                       <FormItem>
@@ -294,6 +544,94 @@ const UserManagementPage = () => {
                   <DialogFooter className="pt-4">
                     <Button type="submit" disabled={isProcessing}>
                       {isProcessing ? "Creating..." : "Create User"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit User Dialog */}
+          <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit User</DialogTitle>
+                <DialogDescription>
+                  Update user details and access privileges.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(handleUpdateUser)} className="space-y-4 py-2">
+                  <FormField
+                    control={editForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Principal">Principal</SelectItem>
+                            <SelectItem value="Exam Officer">Exam Officer</SelectItem>
+                            <SelectItem value="Form Teacher">Form Teacher</SelectItem>
+                            <SelectItem value="Subject Teacher">Subject Teacher</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Active">Active</SelectItem>
+                            <SelectItem value="Inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter className="pt-4">
+                    <Button type="submit" disabled={isProcessing}>
+                      {isProcessing ? "Updating..." : "Update User"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -389,94 +727,139 @@ const UserManagementPage = () => {
             </div>
             
             <TabsContent value="all" className="m-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell><RoleLabel role={user.role} /></TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <UserStatusBadge status={user.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </TableCell>
+              {isLoading ? (
+                <div className="py-8 text-center">Loading users...</div>
+              ) : filteredUsers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell><RoleLabel role={user.role} /></TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <UserStatusBadge status={user.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditClick(user)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  No users found. Create your first user to get started.
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="active" className="m-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers
-                    .filter(user => user.status === 'Active')
-                    .map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell><RoleLabel role={user.role} /></TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <UserStatusBadge status={user.status} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">Edit</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+              {isLoading ? (
+                <div className="py-8 text-center">Loading users...</div>
+              ) : filteredUsers.filter(user => user.status === 'Active').length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers
+                      .filter(user => user.status === 'Active')
+                      .map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell><RoleLabel role={user.role} /></TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <UserStatusBadge status={user.status} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEditClick(user)}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  No active users found.
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="inactive" className="m-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers
-                    .filter(user => user.status === 'Inactive')
-                    .map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell><RoleLabel role={user.role} /></TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <UserStatusBadge status={user.status} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">Edit</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+              {isLoading ? (
+                <div className="py-8 text-center">Loading users...</div>
+              ) : filteredUsers.filter(user => user.status === 'Inactive').length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers
+                      .filter(user => user.status === 'Inactive')
+                      .map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.name}</TableCell>
+                          <TableCell><RoleLabel role={user.role} /></TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <UserStatusBadge status={user.status} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleEditClick(user)}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  No inactive users found.
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

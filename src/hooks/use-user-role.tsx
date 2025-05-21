@@ -26,7 +26,16 @@ export function useUserRole() {
 
         if (error) {
           console.error('Error fetching user role:', error);
-          setUserRole(null);
+          
+          // Fallback for super admin emails
+          const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
+          if (user.email && superAdmins.includes(user.email)) {
+            setUserRole('Principal');
+          } else if (user.user_metadata?.is_super_admin === true) {
+            setUserRole('Principal');
+          } else {
+            setUserRole(null);
+          }
         } else if (data) {
           setUserRole(data as UserRole);
         }
