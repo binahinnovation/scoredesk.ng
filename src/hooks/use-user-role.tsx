@@ -20,18 +20,15 @@ export function useUserRole() {
       }
 
       try {
-        // Use explicit typing to avoid TypeScript errors
+        // Using raw SQL query to avoid TypeScript errors with unrecognized tables
         const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
+          .rpc('get_user_role', { user_id_param: user.id });
 
         if (error) {
           console.error('Error fetching user role:', error);
           setUserRole(null);
         } else if (data) {
-          setUserRole(data.role as UserRole);
+          setUserRole(data as UserRole);
         }
       } catch (error: any) {
         console.error('Error in useUserRole hook:', error);
@@ -52,8 +49,9 @@ export function useUserRole() {
   const hasPermission = (feature: string) => {
     if (!userRole) return false;
     
-    // Special case for super admin
-    if (user?.email === 'deepmindfx01@gmail.com') {
+    // Special case for super admins
+    const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
+    if (user?.email && superAdmins.includes(user.email)) {
       return true; // Super admin has access to everything
     }
     

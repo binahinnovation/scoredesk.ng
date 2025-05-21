@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
@@ -57,17 +56,14 @@ export function useAuth() {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      // Use explicit typing to avoid TypeScript errors
+      // Using raw SQL query to avoid TypeScript errors with unrecognized tables
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+        .rpc('get_user_role', { user_id_param: userId });
 
       if (error) {
         console.error('Error fetching user role:', error);
       } else if (data) {
-        setUserRole(data.role as UserRole);
+        setUserRole(data as UserRole);
       }
     } catch (error) {
       console.error('Error in fetchUserRole:', error);
@@ -76,8 +72,9 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      // Special handling for the super admin email
-      if (email === 'deepmindfx01@gmail.com') {
+      // Special handling for super admin emails
+      const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
+      if (superAdmins.includes(email)) {
         // For demo purposes, we'll automatically assign the Principal role
         // In a real application, you would validate this against a secure list
         console.log('Logging in as super admin');
