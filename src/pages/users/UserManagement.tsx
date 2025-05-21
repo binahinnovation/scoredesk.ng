@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,6 +85,39 @@ const UserManagementPage = () => {
     fetchUsers();
   }, []);
 
+  // Helper function to get user email
+  const getUserEmail = async (userId: string): Promise<string | null> => {
+    try {
+      // We can't directly access auth.users, so we'll use a public function or endpoint
+      // This is a simplified approach - in a real application, you'd implement a secure way to get emails
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+      
+      if (error || !data) return null;
+      
+      // Since we can't directly get the email, we'll try to fetch it from user metadata
+      // In a real application, you might store this in the profiles table
+      return userId; // Just returning the ID as placeholder
+    } catch (error) {
+      console.error('Error getting user email:', error);
+      return null;
+    }
+  };
+
+  // Helper function to check if user is active
+  const isUserActive = async (userId: string): Promise<boolean> => {
+    try {
+      // We can't directly access auth.users ban status, so we'll assume all users are active for now
+      return true;
+    } catch (error) {
+      console.error('Error checking user status:', error);
+      return false;
+    }
+  };
+
   // Fetch users from Supabase
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -110,9 +144,9 @@ const UserManagementPage = () => {
             const { data: roleData, error: roleError } = await supabase
               .rpc('get_user_role', { user_id_param: profile.id });
             
-            // Get user email and status from auth users
+            // Get user email and status from auth users - using helper functions
             const userEmail = await getUserEmail(profile.id);
-            const isUserActive = await isUserActive(profile.id);
+            const userIsActive = await isUserActive(profile.id);
             
             let role: UserRole = roleData as UserRole || 'Subject Teacher';
             
@@ -121,7 +155,7 @@ const UserManagementPage = () => {
               name: profile.full_name || 'Unknown',
               role: role,
               email: userEmail || 'unknown@email.com',
-              status: isUserActive ? 'Active' : 'Inactive' as 'Active' | 'Inactive',
+              status: userIsActive ? 'Active' : 'Inactive' as 'Active' | 'Inactive',
               created_at: profile.created_at
             };
           })
@@ -138,29 +172,6 @@ const UserManagementPage = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Helper function to get user email
-  const getUserEmail = async (userId: string): Promise<string | null> => {
-    try {
-      // We can't directly access auth.users, so we'll use a public function or endpoint
-      // This is a simplified approach - in a real application, you'd implement a secure way to get emails
-      return null; // Returning null for now since we can't directly access auth.users
-    } catch (error) {
-      console.error('Error getting user email:', error);
-      return null;
-    }
-  };
-
-  // Helper function to check if user is active
-  const isUserActive = async (userId: string): Promise<boolean> => {
-    try {
-      // We can't directly access auth.users ban status, so we'll assume all users are active for now
-      return true;
-    } catch (error) {
-      console.error('Error checking user status:', error);
-      return false;
     }
   };
 
