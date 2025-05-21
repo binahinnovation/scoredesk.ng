@@ -65,19 +65,19 @@ const AppRoutes = () => {
   );
 };
 
-// Separate App component to fix the hooks issue
+// App component
 const App = () => {
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <StorageInitializer />
-          <Toaster />
-          <Sonner />
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <StorageInitializer />
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <AppRoutes />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
