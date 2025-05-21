@@ -15,7 +15,7 @@ export default function MainLayout() {
   }, []);
   
   return (
-    <div className={`min-h-screen font-roboto bg-background transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`min-h-screen font-roboto bg-gray-50 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
       <MainNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />

@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   BarChart3, 
-  BookOpen, 
-  GraduationCap, 
-  Settings, 
   Users, 
-  School,
+  User,
+  Layers,
+  FilePen,
+  Lock,
+  FileText,
+  Palette,
+  Key,
+  Settings,
   ChevronLeft,
   ChevronRight,
-  Wallet,
-  ReceiptText,
-  Download,
-  Activity,
-  Database
+  School,
+  ChartBar
 } from "lucide-react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -28,7 +29,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-primary text-white transition-all duration-300 ease-in-out z-30",
+        "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-emerald-700 text-white transition-all duration-300 ease-in-out z-30",
         open ? "w-64" : "w-16",
         className
       )}
@@ -39,7 +40,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
           variant="ghost" 
           size="icon"
           onClick={() => setOpen && setOpen(!open)}
-          className="absolute -right-4 top-4 bg-primary rounded-full text-white hover:bg-primary/90 shadow-md h-8 w-8"
+          className="absolute -right-4 top-4 bg-emerald-700 rounded-full text-white hover:bg-emerald-600 shadow-md h-8 w-8"
         >
           {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
@@ -51,7 +52,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                 "mb-2 px-4 font-semibold tracking-tight transition-all duration-300",
                 open ? "text-lg opacity-100" : "text-xs opacity-0 h-0"
               )}>
-                Dashboard
+                Management
               </h2>
               <div className="space-y-1">
                 <NavLink to="/dashboard">
@@ -59,12 +60,12 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
                     >
-                      <BarChart3 className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <School className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
                       <span className={cn("transition-all duration-300", 
                         open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
                       )}>Dashboard</span>
@@ -72,92 +73,56 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                   )}
                 </NavLink>
                 
-                <NavLink to="/wallet">
+                <NavLink to="/users">
                   {({ isActive }) => (
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
                     >
-                      <Wallet className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <Users className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
                       <span className={cn("transition-all duration-300", 
                         open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Wallet</span>
+                      )}>User Management</span>
                     </Button>
                   )}
                 </NavLink>
 
-                <NavLink to="/transactions">
+                <NavLink to="/students">
                   {({ isActive }) => (
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
                     >
-                      <ReceiptText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <User className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
                       <span className={cn("transition-all duration-300", 
                         open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Transactions</span>
+                      )}>Student Management</span>
                     </Button>
                   )}
                 </NavLink>
 
-                <NavLink to="/settlements">
+                <NavLink to="/classes">
                   {({ isActive }) => (
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
                     >
-                      <Download className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <Layers className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
                       <span className={cn("transition-all duration-300", 
                         open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Settlements</span>
-                    </Button>
-                  )}
-                </NavLink>
-
-                <NavLink to="/monnify">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Activity className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Monnify Status</span>
-                    </Button>
-                  )}
-                </NavLink>
-
-                <NavLink to="/icedata">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Database className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Ice Data Services</span>
+                      )}>Class & Subject</span>
                     </Button>
                   )}
                 </NavLink>
@@ -169,15 +134,151 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                 "mb-2 px-4 font-semibold tracking-tight transition-all duration-300",
                 open ? "text-lg opacity-100" : "text-xs opacity-0 h-0"
               )}>
-                Settings
+                Academic
               </h2>
               <div className="space-y-1">
+                <NavLink to="/results/entry">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <FilePen className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Result Entry</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/results/approval">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Lock className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Result Approval</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/ranking">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <BarChart3 className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Class Ranking</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/reportcards">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Report Card Designer</span>
+                    </Button>
+                  )}
+                </NavLink>
+              </div>
+            </div>
+
+            <div className="px-3 py-2">
+              <h2 className={cn(
+                "mb-2 px-4 font-semibold tracking-tight transition-all duration-300",
+                open ? "text-lg opacity-100" : "text-xs opacity-0 h-0"
+              )}>
+                Administration
+              </h2>
+              <div className="space-y-1">
+                <NavLink to="/branding">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Palette className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>School Branding</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/scratchcards">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Key className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Scratch Cards</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/analytics">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <ChartBar className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Analytics</span>
+                    </Button>
+                  )}
+                </NavLink>
+
                 <NavLink to="/settings">
                   {({ isActive }) => (
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-start text-white hover:bg-primary/80 hover:text-white",
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
