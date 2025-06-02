@@ -19,6 +19,7 @@ interface ResultWithDetails {
   is_approved: boolean;
   approved_at: string | null;
   created_at: string;
+  teacher_id: string | null;
   students: {
     first_name: string;
     last_name: string;
@@ -37,9 +38,6 @@ interface ResultWithDetails {
     name: string;
     academic_year: string;
   };
-  teacher: {
-    email: string;
-  } | null;
 }
 
 export default function ResultApproval() {
@@ -69,7 +67,7 @@ export default function ResultApproval() {
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      // Fetch results with related data
+      // Fetch results with related data (without teacher relationship)
       const { data: resultsData, error } = await supabase
         .from("results")
         .select(`
@@ -82,8 +80,7 @@ export default function ResultApproval() {
           ),
           subjects:subject_id (name, code),
           assessments:assessment_id (name, max_score),
-          terms:term_id (name, academic_year),
-          teacher:teacher_id (email)
+          terms:term_id (name, academic_year)
         `)
         .order("created_at", { ascending: false });
 
@@ -353,7 +350,6 @@ export default function ResultApproval() {
                     <TableHead>Assessment</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Term</TableHead>
-                    <TableHead>Submitted By</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -361,7 +357,7 @@ export default function ResultApproval() {
                 <TableBody>
                   {filteredResults.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No results found matching your criteria
                       </TableCell>
                     </TableRow>
@@ -399,7 +395,6 @@ export default function ResultApproval() {
                         <TableCell>
                           {result.terms.name} ({result.terms.academic_year})
                         </TableCell>
-                        <TableCell>{result.teacher?.email || "N/A"}</TableCell>
                         <TableCell>
                           {result.is_approved ? (
                             <Badge variant="default" className="bg-green-100 text-green-800">
