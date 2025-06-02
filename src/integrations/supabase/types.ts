@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      assessments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_score: number
+          name: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_score?: number
+          name: string
+          updated_at?: string
+          weight: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_score?: number
+          name?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       class_subjects: {
         Row: {
           class_id: string
@@ -95,6 +125,171 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      report_card_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          template_data: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          template_data: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          template_data?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      results: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assessment_id: string
+          created_at: string
+          id: string
+          is_approved: boolean | null
+          score: number | null
+          student_id: string
+          subject_id: string
+          teacher_id: string | null
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assessment_id: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          score?: number | null
+          student_id: string
+          subject_id: string
+          teacher_id?: string | null
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          score?: number | null
+          student_id?: string
+          subject_id?: string
+          teacher_id?: string | null
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "results_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "results_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "results_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_rankings: {
+        Row: {
+          average_score: number
+          class_id: string
+          created_at: string
+          grade: string | null
+          id: string
+          position: number | null
+          student_id: string
+          term_id: string
+          total_score: number
+          updated_at: string
+        }
+        Insert: {
+          average_score?: number
+          class_id: string
+          created_at?: string
+          grade?: string | null
+          id?: string
+          position?: number | null
+          student_id: string
+          term_id: string
+          total_score?: number
+          updated_at?: string
+        }
+        Update: {
+          average_score?: number
+          class_id?: string
+          created_at?: string
+          grade?: string | null
+          id?: string
+          position?: number | null
+          student_id?: string
+          term_id?: string
+          total_score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_rankings_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_rankings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_rankings_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
@@ -190,6 +385,39 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      terms: {
+        Row: {
+          academic_year: string
+          created_at: string
+          end_date: string
+          id: string
+          is_current: boolean | null
+          name: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          end_date: string
+          id?: string
+          is_current?: boolean | null
+          name: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          start_date?: string
           updated_at?: string
         }
         Relationships: []
