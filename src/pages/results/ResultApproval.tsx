@@ -54,24 +54,23 @@ export default function ResultApproval() {
   const [loadingData, setLoadingData] = useState(true);
   const [approving, setApproving] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (hasPermission("Result Approval")) {
-      fetchData();
-    }
-  }, [hasPermission]);
-
-  useEffect(() => {
-    filterResults();
-  }, [results, searchTerm, statusFilter, subjectFilter, classFilter]);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
 
   const fetchData = async () => {
+    if (fetchAttempts >= 3) {
+      console.log("Max fetch attempts reached, stopping...");
+      setError("Maximum fetch attempts reached. Please try refreshing the page.");
+      setLoadingData(false);
+      return;
+    }
+
     console.log("Starting to fetch results data...");
     setLoadingData(true);
     setError(null);
+    setFetchAttempts(prev => prev + 1);
     
     try {
-      // Fetch results with related data
+      // Fetch results with basic data first
       console.log("Fetching results...");
       const { data: resultsData, error: resultsError } = await supabase
         .from("results")
@@ -87,23 +86,26 @@ export default function ResultApproval() {
           assessment_id,
           term_id
         `)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (resultsError) {
         console.error("Error fetching results:", resultsError);
-        throw resultsError;
+        throw new Error(`Failed to fetch results: ${resultsError.message}`);
       }
 
       console.log("Results fetched:", resultsData?.length || 0);
 
       if (!resultsData || resultsData.length === 0) {
+        console.log("No results found");
         setResults([]);
         setFilteredResults([]);
+        setLoadingData(false);
         return;
       }
 
-      // Fetch related data separately to avoid complex joins
-      const [studentsData, subjectsData, assessmentsData, termsData, classesData] = await Promise.all([
+      // Fetch related data with error handling
+      const [studentsRes, subjectsRes, assessmentsRes, termsRes, classesRes] = await Promise.allSettled([
         supabase.from("students").select("id, first_name, last_name, student_id, class_id"),
         supabase.from("subjects").select("id, name, code"),
         supabase.from("assessments").select("id, name, max_score"),
@@ -111,14 +113,21 @@ export default function ResultApproval() {
         supabase.from("classes").select("id, name")
       ]);
 
-      // Create lookup maps
-      const studentsMap = new Map(studentsData.data?.map(s => [s.id, s]) || []);
-      const subjectsMap = new Map(subjectsData.data?.map(s => [s.id, s]) || []);
-      const assessmentsMap = new Map(assessmentsData.data?.map(a => [a.id, a]) || []);
-      const termsMap = new Map(termsData.data?.map(t => [t.id, t]) || []);
-      const classesMap = new Map(classesData.data?.map(c => [c.id, c]) || []);
+      // Handle each result safely
+      const studentsData = studentsRes.status === 'fulfilled' ? studentsRes.value.data || [] : [];
+      const subjectsData = subjectsRes.status === 'fulfilled' ? subjectsRes.value.data || [] : [];
+      const assessmentsData = assessmentsRes.status === 'fulfilled' ? assessmentsRes.value.data || [] : [];
+      const termsData = termsRes.status === 'fulfilled' ? termsRes.value.data || [] : [];
+      const classesData = classesRes.status === 'fulfilled' ? classesRes.value.data || [] : [];
 
-      // Combine data
+      // Create lookup maps
+      const studentsMap = new Map(studentsData.map(s => [s.id, s]));
+      const subjectsMap = new Map(subjectsData.map(s => [s.id, s]));
+      const assessmentsMap = new Map(assessmentsData.map(a => [a.id, a]));
+      const termsMap = new Map(termsData.map(t => [t.id, t]));
+      const classesMap = new Map(classesData.map(c => [c.id, c]));
+
+      // Combine data safely
       const enrichedResults: ResultWithDetails[] = resultsData.map(result => {
         const student = studentsMap.get(result.student_id);
         const studentClass = student ? classesMap.get(student.class_id) : null;
@@ -126,9 +135,9 @@ export default function ResultApproval() {
         return {
           ...result,
           students: student ? {
-            first_name: student.first_name,
-            last_name: student.last_name,
-            student_id: student.student_id,
+            first_name: student.first_name || 'Unknown',
+            last_name: student.last_name || 'Student',
+            student_id: student.student_id || 'N/A',
             classes: studentClass ? { name: studentClass.name } : null
           } : null,
           subjects: subjectsMap.get(result.subject_id) || null,
@@ -141,8 +150,9 @@ export default function ResultApproval() {
       setResults(enrichedResults);
       
       // Set filter data
-      setSubjects(subjectsData.data || []);
-      setClasses(classesData.data || []);
+      setSubjects(subjectsData);
+      setClasses(classesData);
+      setFetchAttempts(0); // Reset on success
       
     } catch (error: any) {
       console.error("Error fetching results:", error);
@@ -157,8 +167,18 @@ export default function ResultApproval() {
     }
   };
 
+  useEffect(() => {
+    if (hasPermission("Result Approval") && !loadingData && results.length === 0 && fetchAttempts === 0) {
+      fetchData();
+    }
+  }, [hasPermission]);
+
+  useEffect(() => {
+    filterResults();
+  }, [results, searchTerm, statusFilter, subjectFilter, classFilter]);
+
   const filterResults = () => {
-    let filtered = results;
+    let filtered = [...results];
 
     // Status filter
     if (statusFilter === "pending") {
@@ -211,7 +231,12 @@ export default function ResultApproval() {
         description: "Result approved successfully",
       });
 
-      await fetchData();
+      // Update local state instead of refetching
+      setResults(prev => prev.map(result => 
+        result.id === resultId 
+          ? { ...result, is_approved: true, approved_at: new Date().toISOString() }
+          : result
+      ));
     } catch (error: any) {
       console.error("Error approving result:", error);
       toast({
@@ -243,7 +268,12 @@ export default function ResultApproval() {
         description: "Result rejected successfully",
       });
 
-      await fetchData();
+      // Update local state instead of refetching
+      setResults(prev => prev.map(result => 
+        result.id === resultId 
+          ? { ...result, is_approved: false, approved_at: null }
+          : result
+      ));
     } catch (error: any) {
       console.error("Error rejecting result:", error);
       toast({
@@ -254,6 +284,12 @@ export default function ResultApproval() {
     } finally {
       setApproving(prev => prev.filter(id => id !== resultId));
     }
+  };
+
+  const handleRefresh = () => {
+    setFetchAttempts(0);
+    setError(null);
+    fetchData();
   };
 
   if (loading) {
@@ -288,7 +324,7 @@ export default function ResultApproval() {
             <div className="flex items-center gap-2 text-red-800">
               <AlertCircle className="h-4 w-4" />
               <span>Error: {error}</span>
-              <Button variant="outline" size="sm" onClick={fetchData}>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
                 Retry
               </Button>
             </div>
@@ -365,7 +401,7 @@ export default function ResultApproval() {
             </div>
 
             <div className="flex items-end">
-              <Button variant="outline" onClick={fetchData} className="w-full">
+              <Button variant="outline" onClick={handleRefresh} className="w-full">
                 <Filter className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
