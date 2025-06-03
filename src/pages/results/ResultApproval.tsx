@@ -24,20 +24,20 @@ interface ResultWithDetails {
     first_name: string;
     last_name: string;
     student_id: string;
-    classes: { name: string };
-  };
+    classes: { name: string } | null;
+  } | null;
   subjects: {
     name: string;
     code: string;
-  };
+  } | null;
   assessments: {
     name: string;
     max_score: number;
-  };
+  } | null;
   terms: {
     name: string;
     academic_year: string;
-  };
+  } | null;
 }
 
 export default function ResultApproval() {
@@ -53,6 +53,7 @@ export default function ResultApproval() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [approving, setApproving] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasPermission("Result Approval")) {
@@ -65,39 +66,90 @@ export default function ResultApproval() {
   }, [results, searchTerm, statusFilter, subjectFilter, classFilter]);
 
   const fetchData = async () => {
+    console.log("Starting to fetch results data...");
     setLoadingData(true);
+    setError(null);
+    
     try {
-      // Fetch results with related data (without teacher relationship)
-      const { data: resultsData, error } = await supabase
+      // Fetch results with related data
+      console.log("Fetching results...");
+      const { data: resultsData, error: resultsError } = await supabase
         .from("results")
         .select(`
-          *,
-          students:student_id (
-            first_name,
-            last_name,
-            student_id,
-            classes:class_id (name)
-          ),
-          subjects:subject_id (name, code),
-          assessments:assessment_id (name, max_score),
-          terms:term_id (name, academic_year)
+          id,
+          score,
+          is_approved,
+          approved_at,
+          created_at,
+          teacher_id,
+          student_id,
+          subject_id,
+          assessment_id,
+          term_id
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setResults(resultsData || []);
+      if (resultsError) {
+        console.error("Error fetching results:", resultsError);
+        throw resultsError;
+      }
 
-      // Fetch unique subjects and classes for filters
-      const { data: subjectsData } = await supabase.from("subjects").select("*");
-      const { data: classesData } = await supabase.from("classes").select("*");
+      console.log("Results fetched:", resultsData?.length || 0);
+
+      if (!resultsData || resultsData.length === 0) {
+        setResults([]);
+        setFilteredResults([]);
+        return;
+      }
+
+      // Fetch related data separately to avoid complex joins
+      const [studentsData, subjectsData, assessmentsData, termsData, classesData] = await Promise.all([
+        supabase.from("students").select("id, first_name, last_name, student_id, class_id"),
+        supabase.from("subjects").select("id, name, code"),
+        supabase.from("assessments").select("id, name, max_score"),
+        supabase.from("terms").select("id, name, academic_year"),
+        supabase.from("classes").select("id, name")
+      ]);
+
+      // Create lookup maps
+      const studentsMap = new Map(studentsData.data?.map(s => [s.id, s]) || []);
+      const subjectsMap = new Map(subjectsData.data?.map(s => [s.id, s]) || []);
+      const assessmentsMap = new Map(assessmentsData.data?.map(a => [a.id, a]) || []);
+      const termsMap = new Map(termsData.data?.map(t => [t.id, t]) || []);
+      const classesMap = new Map(classesData.data?.map(c => [c.id, c]) || []);
+
+      // Combine data
+      const enrichedResults: ResultWithDetails[] = resultsData.map(result => {
+        const student = studentsMap.get(result.student_id);
+        const studentClass = student ? classesMap.get(student.class_id) : null;
+        
+        return {
+          ...result,
+          students: student ? {
+            first_name: student.first_name,
+            last_name: student.last_name,
+            student_id: student.student_id,
+            classes: studentClass ? { name: studentClass.name } : null
+          } : null,
+          subjects: subjectsMap.get(result.subject_id) || null,
+          assessments: assessmentsMap.get(result.assessment_id) || null,
+          terms: termsMap.get(result.term_id) || null
+        };
+      });
+
+      console.log("Enriched results:", enrichedResults.length);
+      setResults(enrichedResults);
       
-      setSubjects(subjectsData || []);
-      setClasses(classesData || []);
+      // Set filter data
+      setSubjects(subjectsData.data || []);
+      setClasses(classesData.data || []);
+      
     } catch (error: any) {
       console.error("Error fetching results:", error);
+      setError(error.message || "Failed to load results");
       toast({
         title: "Error",
-        description: "Failed to load results",
+        description: "Failed to load results: " + (error.message || "Unknown error"),
         variant: "destructive",
       });
     } finally {
@@ -117,21 +169,21 @@ export default function ResultApproval() {
 
     // Subject filter
     if (subjectFilter !== "all") {
-      filtered = filtered.filter(result => result.subjects.name === subjectFilter);
+      filtered = filtered.filter(result => result.subjects?.name === subjectFilter);
     }
 
     // Class filter
     if (classFilter !== "all") {
-      filtered = filtered.filter(result => result.students.classes?.name === classFilter);
+      filtered = filtered.filter(result => result.students?.classes?.name === classFilter);
     }
 
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(result => 
-        result.students.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.students.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.students.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.subjects.name.toLowerCase().includes(searchTerm.toLowerCase())
+        result.students?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        result.students?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        result.students?.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        result.subjects?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -229,6 +281,20 @@ export default function ResultApproval() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold text-gray-900">Result Approval</h1>
+      
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertCircle className="h-4 w-4" />
+              <span>Error: {error}</span>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
@@ -358,7 +424,7 @@ export default function ResultApproval() {
                   {filteredResults.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        No results found matching your criteria
+                        {results.length === 0 ? "No results found. Teachers need to enter results first." : "No results found matching your criteria"}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -367,33 +433,33 @@ export default function ResultApproval() {
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {result.students.first_name} {result.students.last_name}
+                              {result.students?.first_name} {result.students?.last_name}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {result.students.student_id}
+                              {result.students?.student_id}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{result.students.classes?.name}</TableCell>
+                        <TableCell>{result.students?.classes?.name || "N/A"}</TableCell>
                         <TableCell>
                           <div>
-                            <div>{result.subjects.name}</div>
+                            <div>{result.subjects?.name || "N/A"}</div>
                             <div className="text-sm text-muted-foreground">
-                              {result.subjects.code}
+                              {result.subjects?.code || ""}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{result.assessments.name}</TableCell>
+                        <TableCell>{result.assessments?.name || "N/A"}</TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            {result.score}/{result.assessments.max_score}
+                            {result.score}/{result.assessments?.max_score || 100}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {((result.score / result.assessments.max_score) * 100).toFixed(1)}%
+                            {result.assessments?.max_score ? ((result.score / result.assessments.max_score) * 100).toFixed(1) : "N/A"}%
                           </div>
                         </TableCell>
                         <TableCell>
-                          {result.terms.name} ({result.terms.academic_year})
+                          {result.terms?.name} ({result.terms?.academic_year})
                         </TableCell>
                         <TableCell>
                           {result.is_approved ? (
@@ -417,7 +483,7 @@ export default function ResultApproval() {
                                 className="bg-green-600 hover:bg-green-700"
                               >
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Approve
+                                {approving.includes(result.id) ? "..." : "Approve"}
                               </Button>
                               <Button
                                 size="sm"
