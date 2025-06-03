@@ -11,6 +11,7 @@ import { AlertCircle, Plus, Download, Search, Eye } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface ScratchCard {
   id: string;
@@ -42,6 +43,7 @@ export default function ScratchCards() {
   const [generateCount, setGenerateCount] = useState(10);
   const [generateAmount, setGenerateAmount] = useState(1000);
   const [selectedTermId, setSelectedTermId] = useState<string>("");
+  const [selectedCard, setSelectedCard] = useState<ScratchCard | null>(null);
 
   useEffect(() => {
     if (hasPermission("Scratch Cards")) {
@@ -87,7 +89,14 @@ export default function ScratchCards() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCards(data || []);
+      
+      // Type cast the data to ensure proper typing
+      const typedCards = (data || []).map(card => ({
+        ...card,
+        status: card.status as "Active" | "Used" | "Expired"
+      }));
+      
+      setCards(typedCards);
     } catch (error) {
       console.error('Error fetching scratch cards:', error);
       toast({
@@ -408,9 +417,54 @@ export default function ScratchCards() {
                       <TableCell>{card.used_by || "-"}</TableCell>
                       <TableCell>{new Date(card.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setSelectedCard(card)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Scratch Card Details</DialogTitle>
+                            </DialogHeader>
+                            {selectedCard && (
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>Serial Number</Label>
+                                  <p className="font-mono">{selectedCard.serial_number}</p>
+                                </div>
+                                <div>
+                                  <Label>PIN</Label>
+                                  <p className="font-mono text-lg font-bold">{selectedCard.pin}</p>
+                                </div>
+                                <div>
+                                  <Label>Amount</Label>
+                                  <p>₦{selectedCard.amount.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <Label>Status</Label>
+                                  <Badge className="ml-2">{selectedCard.status}</Badge>
+                                </div>
+                                {selectedCard.used_by && (
+                                  <div>
+                                    <Label>Used By</Label>
+                                    <p>{selectedCard.used_by}</p>
+                                  </div>
+                                )}
+                                {selectedCard.used_at && (
+                                  <div>
+                                    <Label>Used At</Label>
+                                    <p>{new Date(selectedCard.used_at).toLocaleString()}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))

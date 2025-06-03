@@ -24,6 +24,13 @@ interface Student {
   student_id: string;
 }
 
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  student?: Student;
+  results?: StudentResult[];
+}
+
 export default function StudentResultPortal() {
   const [studentId, setStudentId] = useState("");
   const [scratchCardPin, setScratchCardPin] = useState("");
@@ -71,22 +78,25 @@ export default function StudentResultPortal() {
 
       if (error) throw error;
 
-      if (!data.success) {
+      // Type cast the response data
+      const response = data as ApiResponse;
+
+      if (!response.success) {
         toast({
           title: "Error",
-          description: data.message,
+          description: response.message,
           variant: "destructive",
         });
         return;
       }
 
-      setStudent(data.student);
-      setResults(data.results || []);
+      setStudent(response.student || null);
+      setResults(response.results || []);
       setHasViewed(true);
 
       toast({
         title: "Success",
-        description: data.message,
+        description: response.message,
       });
 
     } catch (error) {
