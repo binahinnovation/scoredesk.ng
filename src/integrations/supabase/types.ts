@@ -230,6 +230,53 @@ export type Database = {
           },
         ]
       }
+      scratch_cards: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          pin: string
+          serial_number: string
+          status: string
+          term_id: string | null
+          updated_at: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          pin: string
+          serial_number: string
+          status?: string
+          term_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          pin?: string
+          serial_number?: string
+          status?: string
+          term_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_cards_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_rankings: {
         Row: {
           average_score: number
@@ -284,6 +331,52 @@ export type Database = {
           },
           {
             foreignKeyName: "student_rankings_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_result_views: {
+        Row: {
+          id: string
+          scratch_card_id: string
+          student_id: string
+          term_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          scratch_card_id: string
+          student_id: string
+          term_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          scratch_card_id?: string
+          student_id?: string
+          term_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_result_views_scratch_card_id_fkey"
+            columns: ["scratch_card_id"]
+            isOneToOne: false
+            referencedRelation: "scratch_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_result_views_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_result_views_term_id_fkey"
             columns: ["term_id"]
             isOneToOne: false
             referencedRelation: "terms"
@@ -451,6 +544,10 @@ export type Database = {
       get_user_role: {
         Args: { user_id_param: string }
         Returns: string
+      }
+      use_scratch_card_for_results: {
+        Args: { p_pin: string; p_student_id: string; p_term_id: string }
+        Returns: Json
       }
     }
     Enums: {

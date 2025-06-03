@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   School,
-  ChartBar
+  ChartBar,
+  ExternalLink
 } from "lucide-react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -290,6 +291,37 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     </Button>
                   )}
                 </NavLink>
+              </div>
+            </div>
+
+            <div className="px-3 py-2">
+              <h2 className={cn(
+                "mb-2 px-4 font-semibold tracking-tight transition-all duration-300",
+                open ? "text-lg opacity-100" : "text-xs opacity-0 h-0"
+              )}>
+                Student Portal
+              </h2>
+              <div className="space-y-1">
+                <a 
+                  href="/student-results" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                      !open && "px-0 justify-center"
+                    )}
+                    size="sm"
+                  >
+                    <ExternalLink className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                    <span className={cn("transition-all duration-300", 
+                      open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                    )}>Result Portal</span>
+                  </Button>
+                </a>
               </div>
             </div>
           </div>

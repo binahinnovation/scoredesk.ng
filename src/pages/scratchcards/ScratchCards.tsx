@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Plus, Download, Search, Eye } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ScratchCard {
   id: string;
@@ -17,25 +18,35 @@ interface ScratchCard {
   serial_number: string;
   amount: number;
   status: "Active" | "Used" | "Expired";
-  term_id: string;
-  used_by?: string;
-  used_at?: string;
+  term_id: string | null;
+  used_by?: string | null;
+  used_at?: string | null;
   created_at: string;
+}
+
+interface Term {
+  id: string;
+  name: string;
+  academic_year: string;
+  is_current: boolean;
 }
 
 export default function ScratchCards() {
   const { userRole, loading, hasPermission } = useUserRole();
   const [cards, setCards] = useState<ScratchCard[]>([]);
+  const [terms, setTerms] = useState<Term[]>([]);
   const [filteredCards, setFilteredCards] = useState<ScratchCard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [generating, setGenerating] = useState(false);
   const [generateCount, setGenerateCount] = useState(10);
   const [generateAmount, setGenerateAmount] = useState(1000);
+  const [selectedTermId, setSelectedTermId] = useState<string>("");
 
   useEffect(() => {
     if (hasPermission("Scratch Cards")) {
       fetchCards();
+      fetchTerms();
     }
   }, [hasPermission]);
 
@@ -43,31 +54,48 @@ export default function ScratchCards() {
     filterCards();
   }, [cards, searchTerm, statusFilter]);
 
-  const fetchCards = async () => {
-    // Simulate fetching scratch cards - replace with actual Supabase query
-    const mockCards: ScratchCard[] = [
-      {
-        id: "1",
-        pin: "1234567890123456",
-        serial_number: "SCH001",
-        amount: 1000,
-        status: "Active",
-        term_id: "term1",
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "2",
-        pin: "2345678901234567",
-        serial_number: "SCH002",
-        amount: 1000,
-        status: "Used",
-        term_id: "term1",
-        used_by: "student123",
-        used_at: new Date().toISOString(),
-        created_at: new Date().toISOString()
+  const fetchTerms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('terms')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTerms(data || []);
+      
+      // Set current term as default
+      const currentTerm = data?.find(term => term.is_current);
+      if (currentTerm) {
+        setSelectedTermId(currentTerm.id);
       }
-    ];
-    setCards(mockCards);
+    } catch (error) {
+      console.error('Error fetching terms:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch terms",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchCards = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scratch_cards')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCards(data || []);
+    } catch (error) {
+      console.error('Error fetching scratch cards:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch scratch cards",
+        variant: "destructive",
+      });
+    }
   };
 
   const filterCards = () => {
@@ -87,29 +115,45 @@ export default function ScratchCards() {
     setFilteredCards(filtered);
   };
 
+  const generatePin = () => {
+    return Math.random().toString().substr(2, 16).padStart(16, '0');
+  };
+
   const generateCards = async () => {
+    if (!selectedTermId) {
+      toast({
+        title: "Error",
+        description: "Please select a term first",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
-      // Simulate card generation - replace with actual implementation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newCards: ScratchCard[] = Array.from({ length: generateCount }, (_, i) => ({
-        id: `generated-${Date.now()}-${i}`,
-        pin: Math.random().toString().substr(2, 16),
-        serial_number: `SCH${String(cards.length + i + 1).padStart(3, '0')}`,
+      const newCards = Array.from({ length: generateCount }, (_, i) => ({
+        pin: generatePin(),
+        serial_number: `SCH${String(cards.length + i + 1).padStart(6, '0')}`,
         amount: generateAmount,
-        status: "Active" as const,
-        term_id: "current-term",
-        created_at: new Date().toISOString()
+        status: 'Active' as const,
+        term_id: selectedTermId,
       }));
 
-      setCards(prev => [...prev, ...newCards]);
+      const { data, error } = await supabase
+        .from('scratch_cards')
+        .insert(newCards)
+        .select();
+
+      if (error) throw error;
+
+      await fetchCards();
       
       toast({
         title: "Success",
         description: `${generateCount} scratch cards generated successfully`,
       });
     } catch (error) {
+      console.error('Error generating cards:', error);
       toast({
         title: "Error",
         description: "Failed to generate scratch cards",
@@ -171,6 +215,23 @@ export default function ScratchCards() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <Label htmlFor="term">Term</Label>
+              <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select term" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name} ({term.academic_year})
+                      {term.is_current && " - Current"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label htmlFor="count">Number of Cards</Label>
               <Input
                 id="count"
@@ -195,7 +256,7 @@ export default function ScratchCards() {
             
             <Button 
               onClick={generateCards} 
-              disabled={generating}
+              disabled={generating || !selectedTermId}
               className="w-full"
             >
               <Plus className="h-4 w-4 mr-2" />

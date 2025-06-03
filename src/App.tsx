@@ -27,6 +27,7 @@ import SchoolBranding from "./pages/branding/SchoolBranding";
 import ScratchCards from "./pages/scratchcards/ScratchCards";
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
+import StudentResultPortal from "./pages/students/StudentResultPortal";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/student-results" element={<StudentResultPortal />} />
       
       {/* Protected routes */}
       <Route path="/" element={
