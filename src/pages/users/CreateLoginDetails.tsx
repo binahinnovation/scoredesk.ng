@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Plus, Trash2, Users, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, Plus, Trash2, Users, UserPlus, AlertCircle } from 'lucide-react';
 import { UserRole } from '@/types/user';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Nigerian school structure
 const CLASSES = [
@@ -61,6 +61,15 @@ const CreateLoginDetails = () => {
   const [sendCredentials, setSendCredentials] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [error, setError] = useState<string>('');
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    console.log(logMessage);
+    setDebugLogs(prev => [...prev, logMessage]);
+  };
 
   // Load school alias from user profile
   useEffect(() => {
@@ -179,48 +188,70 @@ const CreateLoginDetails = () => {
 
   const createLogins = async () => {
     if (loginPreviews.length === 0) {
+      const errorMsg = "No login previews to create. Please generate login previews first.";
+      setError(errorMsg);
+      addDebugLog(errorMsg);
       toast({
         title: "No Logins to Create",
-        description: "Please generate login previews first",
+        description: errorMsg,
         variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
+    setError('');
+    setDebugLogs([]);
+    
     try {
+      addDebugLog("Starting login creation process...");
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      addDebugLog(`Current user ID: ${user.id}`);
 
       // First ensure the classes and subjects exist in the database
+      addDebugLog("Ensuring classes and subjects exist in database...");
       await ensureClassesAndSubjectsExist();
 
       // Create users in auth and profiles
       const createdUsers = [];
+      let failedUsers = [];
       
-      for (const preview of loginPreviews) {
+      addDebugLog(`Attempting to create ${loginPreviews.length} user accounts...`);
+      
+      for (const [index, preview] of loginPreviews.entries()) {
         try {
-          // Create user account using Supabase admin client
-          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
+          
+          // Create user account using Supabase client signup (instead of admin API)
+          const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
-            user_metadata: {
-              username: preview.username,
-              role: preview.role,
-              subjects: preview.subjects,
-              classes: preview.classes,
-              school_alias: schoolAlias,
-              created_by: user.id
-            },
-            email_confirm: false // Skip email confirmation for admin-created accounts
+            options: {
+              data: {
+                username: preview.username,
+                role: preview.role,
+                subjects: preview.subjects,
+                classes: preview.classes,
+                school_alias: schoolAlias,
+                created_by: user.id
+              }
+            }
           });
 
           if (authError) {
-            console.error('Auth error for', preview.email, ':', authError);
+            addDebugLog(`Auth error for ${preview.email}: ${authError.message}`);
+            failedUsers.push({ preview, error: authError.message });
             continue;
           }
 
           if (authData.user) {
+            addDebugLog(`Successfully created auth user: ${authData.user.id}`);
+            
             // Create user role
             const { error: roleError } = await supabase.from('user_roles').insert({
               user_id: authData.user.id,
@@ -228,10 +259,12 @@ const CreateLoginDetails = () => {
             });
 
             if (roleError) {
-              console.error('Role creation error:', roleError);
+              addDebugLog(`Role creation error for ${preview.email}: ${roleError.message}`);
+            } else {
+              addDebugLog(`Successfully created role for user: ${authData.user.id}`);
             }
 
-            // Create profile entry
+            // Create profile entry with school information
             const { error: profileError } = await supabase.from('profiles').insert({
               id: authData.user.id,
               full_name: preview.username,
@@ -239,40 +272,62 @@ const CreateLoginDetails = () => {
             });
 
             if (profileError) {
-              console.error('Profile creation error:', profileError);
+              addDebugLog(`Profile creation error for ${preview.email}: ${profileError.message}`);
+            } else {
+              addDebugLog(`Successfully created profile for user: ${authData.user.id}`);
             }
 
             createdUsers.push(preview);
+          } else {
+            addDebugLog(`No user data returned for ${preview.email}`);
+            failedUsers.push({ preview, error: "No user data returned" });
           }
         } catch (error) {
-          console.error('Error creating user:', preview.email, error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          addDebugLog(`Error creating user ${preview.email}: ${errorMessage}`);
+          failedUsers.push({ preview, error: errorMessage });
         }
       }
+
+      addDebugLog(`Creation complete. Success: ${createdUsers.length}, Failed: ${failedUsers.length}`);
 
       if (createdUsers.length > 0) {
         toast({
           title: "Success",
-          description: `Created ${createdUsers.length} login accounts successfully`,
+          description: `Created ${createdUsers.length} login accounts successfully${failedUsers.length > 0 ? `. ${failedUsers.length} failed.` : ''}`,
         });
 
-        // Reset form
+        // Reset form only if some accounts were created
         setSelectedSubjects([]);
         setSelectedClasses([]);
         setSelectedRole('');
         setLoginPreviews([]);
-      } else {
+      }
+
+      if (failedUsers.length > 0) {
+        const errorMsg = `Failed to create ${failedUsers.length} accounts. Check debug logs for details.`;
+        setError(errorMsg);
+        addDebugLog(`Failed accounts: ${failedUsers.map(f => f.preview.email).join(', ')}`);
+      }
+
+      if (createdUsers.length === 0) {
+        const errorMsg = "No accounts were created successfully. Please check the debug logs for details.";
+        setError(errorMsg);
         toast({
           title: "Error",
-          description: "No accounts were created. Please check the console for errors.",
+          description: errorMsg,
           variant: "destructive",
         });
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      addDebugLog(`Fatal error: ${errorMessage}`);
+      setError(errorMessage);
       console.error('Error creating logins:', error);
       toast({
         title: "Error",
-        description: "Failed to create login accounts. Please try again.",
+        description: `Failed to create login accounts: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -329,6 +384,30 @@ const CreateLoginDetails = () => {
           <p className="text-gray-600">Generate login credentials for teachers and staff</p>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Debug Logs */}
+      {debugLogs.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Logs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-40 overflow-y-auto bg-gray-50 p-3 rounded text-xs font-mono">
+              {debugLogs.map((log, index) => (
+                <div key={index} className="mb-1">{log}</div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

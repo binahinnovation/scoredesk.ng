@@ -62,6 +62,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -80,6 +81,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -98,6 +100,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -116,6 +119,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -144,6 +148,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -162,6 +167,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -180,6 +186,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -198,6 +205,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -226,6 +234,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -244,6 +253,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -262,6 +272,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
@@ -280,6 +291,7 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
                         "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
                         !open && "px-0 justify-center"
                       )}
                       size="sm"
