@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +28,8 @@ import ScratchCards from "./pages/scratchcards/ScratchCards";
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
 import StudentResultPortal from "./pages/students/StudentResultPortal";
+import ManageUsers from "./pages/users/ManageUsers";
+import RolePermissions from "./pages/users/RolePermissions";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -74,6 +75,8 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="users/create-login" element={<CreateLoginDetails />} />
+        <Route path="users/manage" element={<ManageUsers />} />
+        <Route path="users/permissions" element={<RolePermissions />} />
         <Route path="students" element={<StudentManagement />} />
         <Route path="classes" element={<ClassSubjectManagement />} />
         <Route path="results/entry" element={<ResultEntry />} />

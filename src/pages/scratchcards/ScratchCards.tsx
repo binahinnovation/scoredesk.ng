@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +18,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface ScratchCard {
   id: string;
   serial_number: string;
+  pin: string;
   amount: number;
-  is_used: boolean;
+  status: string;
   term_id: string;
   used_by: string | null;
   used_at: string | null;
@@ -56,6 +58,12 @@ const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({ open, setOpen, ca
               <Input type="text" id="serialNumber" value={card.serial_number} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="pin" className="text-right">
+                PIN
+              </Label>
+              <Input type="text" id="pin" value={card.pin} className="col-span-3" readOnly />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="amount" className="text-right">
                 Amount
               </Label>
@@ -65,7 +73,7 @@ const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({ open, setOpen, ca
               <Label htmlFor="status" className="text-right">
                 Status
               </Label>
-              <Input type="text" id="status" value={card.is_used ? 'Used' : 'Unused'} className="col-span-3" readOnly />
+              <Input type="text" id="status" value={card.status} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="term" className="text-right">
@@ -106,6 +114,10 @@ const generateSerialNumber = () => {
   return `${prefix}-${randomChars}`;
 };
 
+const generatePIN = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
 const ScratchCards = () => {
   const [amount, setAmount] = useState<number>(10);
   const [selectedTerm, setSelectedTerm] = useState<string>('');
@@ -115,23 +127,32 @@ const ScratchCards = () => {
 
   // Use the improved query hook for better loading handling
   const { 
-    data: scratchCards, 
+    data: scratchCardsData, 
     loading: loadingCards, 
     error: cardsError, 
     refetch: refetchCards 
-  } = useSupabaseQuery(
-    () => supabase.from('scratch_cards').select('*').order('created_at', { ascending: false }),
+  } = useSupabaseQuery<ScratchCard[]>(
+    async () => {
+      const { data, error } = await supabase.from('scratch_cards').select('*').order('created_at', { ascending: false });
+      return { data, error };
+    },
     []
   );
 
   const { 
-    data: terms, 
+    data: termsData, 
     loading: loadingTerms, 
     error: termsError 
-  } = useSupabaseQuery(
-    () => supabase.from('terms').select('*').order('created_at', { ascending: false }),
+  } = useSupabaseQuery<Term[]>(
+    async () => {
+      const { data, error } = await supabase.from('terms').select('*').order('created_at', { ascending: false });
+      return { data, error };
+    },
     []
   );
+
+  const scratchCards = scratchCardsData || [];
+  const terms = termsData || [];
 
   const generateScratchCards = async () => {
     if (!selectedTerm) {
@@ -145,6 +166,7 @@ const ScratchCards = () => {
 
     const newCards = Array.from({ length: amount }, () => ({
       serial_number: generateSerialNumber(),
+      pin: generatePIN(),
       amount: 100,
       term_id: selectedTerm,
     }));
@@ -246,7 +268,7 @@ const ScratchCards = () => {
                   <SelectValue placeholder="Select a term" />
                 </SelectTrigger>
                 <SelectContent>
-                  {terms && terms.map((term) => (
+                  {terms.map((term) => (
                     <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -278,6 +300,7 @@ const ScratchCards = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Serial Number</TableHead>
+                      <TableHead>PIN</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Term</TableHead>
@@ -287,20 +310,21 @@ const ScratchCards = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {scratchCards && scratchCards.length > 0 ? (
+                    {scratchCards.length > 0 ? (
                       scratchCards.map((card) => (
                         <TableRow key={card.id}>
                           <TableCell>{card.serial_number}</TableCell>
+                          <TableCell>{card.pin}</TableCell>
                           <TableCell>{card.amount}</TableCell>
                           <TableCell>
-                            {card.is_used ? (
+                            {card.status === 'Used' ? (
                               <Badge variant="destructive">Used</Badge>
                             ) : (
-                              <Badge variant="secondary">Unused</Badge>
+                              <Badge variant="secondary">Active</Badge>
                             )}
                           </TableCell>
                           <TableCell>
-                            {terms?.find(term => term.id === card.term_id)?.name || 'Unknown'}
+                            {terms.find(term => term.id === card.term_id)?.name || 'Unknown'}
                           </TableCell>
                           <TableCell>{card.used_by || 'N/A'}</TableCell>
                           <TableCell>{card.used_at ? new Date(card.used_at).toLocaleDateString() : 'N/A'}</TableCell>
@@ -314,7 +338,7 @@ const ScratchCards = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                           No scratch cards found. Generate some cards to get started.
                         </TableCell>
                       </TableRow>

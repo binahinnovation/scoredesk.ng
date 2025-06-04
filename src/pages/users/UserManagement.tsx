@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, Shield, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const UserManagement = () => {
@@ -42,7 +42,7 @@ const UserManagement = () => {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/users/manage')}>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Users className="h-5 w-5 mr-2 text-blue-600" />
@@ -59,10 +59,10 @@ const UserManagement = () => {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/users/permissions')}>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2 text-purple-600" />
+              <Shield className="h-5 w-5 mr-2 text-purple-600" />
               Role Permissions
             </CardTitle>
             <CardDescription>
