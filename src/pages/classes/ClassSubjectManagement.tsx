@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,9 +11,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { Plus, Edit, Trash2, BookOpen, Users } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
+
+// Nigerian school structure
+const NIGERIAN_CLASSES = [
+  // Nursery Section
+  'Nursery 1', 'Nursery 2', 'Nursery 3',
+  // Primary Section
+  'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
+  // Junior Secondary
+  'JSS1A', 'JSS1B', 'JSS1C', 'JSS2A', 'JSS2B', 'JSS2C', 'JSS3A', 'JSS3B', 'JSS3C',
+  // Senior Secondary
+  'SS1A', 'SS1B', 'SS1C', 'SS2A', 'SS2B', 'SS2C', 'SS3A', 'SS3B', 'SS3C'
+];
+
+const NIGERIAN_SUBJECTS = [
+  // Nursery/Primary Subjects
+  'English Language', 'Mathematics', 'Verbal Reasoning', 'Quantitative Reasoning',
+  'Basic Science', 'Civic Education', 'Social Studies', 'Phonics',
+  'Yoruba', 'Hausa', 'Igbo', 'CRS', 'IRS', 'Creative Arts',
+  'Computer Studies', 'Handwriting', 'Physical & Health Education', 'Practical Life Skills',
+  // JSS Subjects
+  'English Studies', 'Basic Technology', 'Business Studies', 'Agricultural Science',
+  'Cultural & Creative Arts', 'French',
+  // SSS Subjects
+  'Biology', 'Chemistry', 'Physics', 'Government', 'Literature in English',
+  'Economics', 'Geography', 'Further Mathematics', 'Commerce', 'Accounting',
+  'ICT', 'Marketing', 'Arabic'
+];
 
 interface Class {
   id: string;
@@ -47,6 +74,7 @@ export default function ClassSubjectManagement() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [useQuickAdd, setUseQuickAdd] = useState(false);
 
   const [classFormData, setClassFormData] = useState({
     name: '',
@@ -61,6 +89,15 @@ export default function ClassSubjectManagement() {
 
   const { hasPermission } = useUserRole();
   const queryClient = useQueryClient();
+
+  // Generate subject code automatically
+  const generateSubjectCode = (subjectName: string) => {
+    return subjectName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 4);
+  };
 
   // Fetch classes
   const { data: classes = [], isLoading: classesLoading } = useQuery({
@@ -187,9 +224,15 @@ export default function ClassSubjectManagement() {
   // Subject mutations
   const createSubjectMutation = useMutation({
     mutationFn: async (subjectData: typeof subjectFormData) => {
+      // Auto-generate code if not provided
+      const finalData = {
+        ...subjectData,
+        code: subjectData.code || generateSubjectCode(subjectData.name)
+      };
+
       const { data, error } = await supabase
         .from('subjects')
-        .insert([subjectData])
+        .insert([finalData])
         .select()
         .single();
 
@@ -297,14 +340,79 @@ export default function ClassSubjectManagement() {
     }
   });
 
+  // Quick add all Nigerian classes
+  const addAllNigerianClasses = async () => {
+    try {
+      const existingClasses = classes.map(c => c.name);
+      const missingClasses = NIGERIAN_CLASSES.filter(name => !existingClasses.includes(name));
+      
+      if (missingClasses.length === 0) {
+        toast({ title: "All Nigerian classes already exist" });
+        return;
+      }
+
+      const classInserts = missingClasses.map(name => ({ name }));
+      const { error } = await supabase.from('classes').insert(classInserts);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      toast({ 
+        title: "Success", 
+        description: `Added ${missingClasses.length} Nigerian standard classes` 
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error adding classes",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Quick add all Nigerian subjects
+  const addAllNigerianSubjects = async () => {
+    try {
+      const existingSubjects = subjects.map(s => s.name);
+      const missingSubjects = NIGERIAN_SUBJECTS.filter(name => !existingSubjects.includes(name));
+      
+      if (missingSubjects.length === 0) {
+        toast({ title: "All Nigerian subjects already exist" });
+        return;
+      }
+
+      const subjectInserts = missingSubjects.map(name => ({
+        name,
+        code: generateSubjectCode(name)
+      }));
+      const { error } = await supabase.from('subjects').insert(subjectInserts);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast({ 
+        title: "Success", 
+        description: `Added ${missingSubjects.length} Nigerian standard subjects` 
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error adding subjects",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const resetClassForm = () => {
     setClassFormData({ name: '', description: '' });
     setEditingClass(null);
+    setUseQuickAdd(false);
   };
 
   const resetSubjectForm = () => {
     setSubjectFormData({ name: '', code: '', description: '' });
     setEditingSubject(null);
+    setUseQuickAdd(false);
   };
 
   const openCreateClassDialog = () => {
@@ -402,48 +510,81 @@ export default function ClassSubjectManagement() {
                   Classes
                 </CardTitle>
                 {canManageClasses && (
-                  <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button onClick={openCreateClassDialog}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Class
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingClass ? 'Edit Class' : 'Add New Class'}
-                        </DialogTitle>
-                      </DialogHeader>
-                      <form onSubmit={handleClassSubmit} className="space-y-4">
-                        <div>
-                          <Label htmlFor="class_name">Class Name *</Label>
-                          <Input
-                            id="class_name"
-                            value={classFormData.name}
-                            onChange={(e) => setClassFormData({ ...classFormData, name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="class_description">Description</Label>
-                          <Textarea
-                            id="class_description"
-                            value={classFormData.description}
-                            onChange={(e) => setClassFormData({ ...classFormData, description: e.target.value })}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => setIsClassDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={createClassMutation.isPending || updateClassMutation.isPending}>
-                            {editingClass ? 'Update Class' : 'Create Class'}
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-2">
+                    <Button onClick={addAllNigerianClasses} variant="outline">
+                      Add All Nigerian Classes
+                    </Button>
+                    <Dialog open={isClassDialogOpen} onOpenChange={setIsClassDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button onClick={openCreateClassDialog}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Class
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {editingClass ? 'Edit Class' : 'Add New Class'}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleClassSubmit} className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="useQuickAdd"
+                              checked={useQuickAdd}
+                              onCheckedChange={(checked) => setUseQuickAdd(checked as boolean)}
+                            />
+                            <Label htmlFor="useQuickAdd">Quick select from Nigerian standards</Label>
+                          </div>
+                          
+                          {useQuickAdd ? (
+                            <div>
+                              <Label htmlFor="quick_class">Select Class</Label>
+                              <Select value={classFormData.name} onValueChange={(value) => setClassFormData({ ...classFormData, name: value })}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a class" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {NIGERIAN_CLASSES.map((className) => (
+                                    <SelectItem key={className} value={className}>
+                                      {className}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : (
+                            <div>
+                              <Label htmlFor="class_name">Class Name *</Label>
+                              <Input
+                                id="class_name"
+                                value={classFormData.name}
+                                onChange={(e) => setClassFormData({ ...classFormData, name: e.target.value })}
+                                required
+                              />
+                            </div>
+                          )}
+                          
+                          <div>
+                            <Label htmlFor="class_description">Description</Label>
+                            <Textarea
+                              id="class_description"
+                              value={classFormData.description}
+                              onChange={(e) => setClassFormData({ ...classFormData, description: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setIsClassDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={createClassMutation.isPending || updateClassMutation.isPending}>
+                              {editingClass ? 'Update Class' : 'Create Class'}
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -515,56 +656,103 @@ export default function ClassSubjectManagement() {
                   Subjects
                 </CardTitle>
                 {canManageClasses && (
-                  <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button onClick={openCreateSubjectDialog}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Subject
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingSubject ? 'Edit Subject' : 'Add New Subject'}
-                        </DialogTitle>
-                      </DialogHeader>
-                      <form onSubmit={handleSubjectSubmit} className="space-y-4">
-                        <div>
-                          <Label htmlFor="subject_name">Subject Name *</Label>
-                          <Input
-                            id="subject_name"
-                            value={subjectFormData.name}
-                            onChange={(e) => setSubjectFormData({ ...subjectFormData, name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="subject_code">Subject Code</Label>
-                          <Input
-                            id="subject_code"
-                            value={subjectFormData.code}
-                            onChange={(e) => setSubjectFormData({ ...subjectFormData, code: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="subject_description">Description</Label>
-                          <Textarea
-                            id="subject_description"
-                            value={subjectFormData.description}
-                            onChange={(e) => setSubjectFormData({ ...subjectFormData, description: e.target.value })}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={createSubjectMutation.isPending || updateSubjectMutation.isPending}>
-                            {editingSubject ? 'Update Subject' : 'Create Subject'}
-                          </Button>
-                        </div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-2">
+                    <Button onClick={addAllNigerianSubjects} variant="outline">
+                      Add All Nigerian Subjects
+                    </Button>
+                    <Dialog open={isSubjectDialogOpen} onOpenChange={setIsSubjectDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button onClick={openCreateSubjectDialog}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Subject
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {editingSubject ? 'Edit Subject' : 'Add New Subject'}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleSubjectSubmit} className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="useQuickAddSubject"
+                              checked={useQuickAdd}
+                              onCheckedChange={(checked) => setUseQuickAdd(checked as boolean)}
+                            />
+                            <Label htmlFor="useQuickAddSubject">Quick select from Nigerian standards</Label>
+                          </div>
+                          
+                          {useQuickAdd ? (
+                            <div>
+                              <Label htmlFor="quick_subject">Select Subject</Label>
+                              <Select value={subjectFormData.name} onValueChange={(value) => {
+                                setSubjectFormData({ 
+                                  ...subjectFormData, 
+                                  name: value,
+                                  code: generateSubjectCode(value)
+                                });
+                              }}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a subject" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {NIGERIAN_SUBJECTS.map((subjectName) => (
+                                    <SelectItem key={subjectName} value={subjectName}>
+                                      {subjectName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : (
+                            <div>
+                              <Label htmlFor="subject_name">Subject Name *</Label>
+                              <Input
+                                id="subject_name"
+                                value={subjectFormData.name}
+                                onChange={(e) => {
+                                  const name = e.target.value;
+                                  setSubjectFormData({ 
+                                    ...subjectFormData, 
+                                    name,
+                                    code: subjectFormData.code || generateSubjectCode(name)
+                                  });
+                                }}
+                                required
+                              />
+                            </div>
+                          )}
+                          
+                          <div>
+                            <Label htmlFor="subject_code">Subject Code</Label>
+                            <Input
+                              id="subject_code"
+                              value={subjectFormData.code}
+                              onChange={(e) => setSubjectFormData({ ...subjectFormData, code: e.target.value })}
+                              placeholder="Auto-generated if empty"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="subject_description">Description</Label>
+                            <Textarea
+                              id="subject_description"
+                              value={subjectFormData.description}
+                              onChange={(e) => setSubjectFormData({ ...subjectFormData, description: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={createSubjectMutation.isPending || updateSubjectMutation.isPending}>
+                              {editingSubject ? 'Update Subject' : 'Create Subject'}
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 )}
               </div>
             </CardHeader>

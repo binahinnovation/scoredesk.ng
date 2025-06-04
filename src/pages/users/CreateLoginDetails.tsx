@@ -35,7 +35,7 @@ const SUBJECTS = [
   // SSS Subjects
   'Biology', 'Chemistry', 'Physics', 'Government', 'Literature in English',
   'Economics', 'Geography', 'Further Mathematics', 'Commerce', 'Accounting',
-  'ICT', 'Marketing'
+  'ICT', 'Marketing', 'Arabic'
 ];
 
 const USER_ROLES: UserRole[] = ['Subject Teacher', 'Form Teacher', 'Exam Officer'];
@@ -192,61 +192,132 @@ const CreateLoginDetails = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // First ensure the classes and subjects exist in the database
+      await ensureClassesAndSubjectsExist();
+
       // Create users in auth and profiles
       const createdUsers = [];
       
       for (const preview of loginPreviews) {
-        // Sign up user
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: preview.email,
-          password: preview.password,
-          user_metadata: {
-            username: preview.username,
-            role: preview.role,
-            subjects: preview.subjects,
-            classes: preview.classes,
-            school_alias: schoolAlias,
-            created_by: user.id
-          }
-        });
-
-        if (authError) {
-          console.error('Auth error:', authError);
-          continue;
-        }
-
-        if (authData.user) {
-          // Create user role
-          await supabase.from('user_roles').insert({
-            user_id: authData.user.id,
-            role: preview.role
+        try {
+          // Create user account using Supabase admin client
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: preview.email,
+            password: preview.password,
+            user_metadata: {
+              username: preview.username,
+              role: preview.role,
+              subjects: preview.subjects,
+              classes: preview.classes,
+              school_alias: schoolAlias,
+              created_by: user.id
+            },
+            email_confirm: false // Skip email confirmation for admin-created accounts
           });
 
-          createdUsers.push(preview);
+          if (authError) {
+            console.error('Auth error for', preview.email, ':', authError);
+            continue;
+          }
+
+          if (authData.user) {
+            // Create user role
+            const { error: roleError } = await supabase.from('user_roles').insert({
+              user_id: authData.user.id,
+              role: preview.role
+            });
+
+            if (roleError) {
+              console.error('Role creation error:', roleError);
+            }
+
+            // Create profile entry
+            const { error: profileError } = await supabase.from('profiles').insert({
+              id: authData.user.id,
+              full_name: preview.username,
+              school_name: schoolAlias
+            });
+
+            if (profileError) {
+              console.error('Profile creation error:', profileError);
+            }
+
+            createdUsers.push(preview);
+          }
+        } catch (error) {
+          console.error('Error creating user:', preview.email, error);
         }
       }
 
-      toast({
-        title: "Success",
-        description: `Created ${createdUsers.length} login accounts successfully`,
-      });
+      if (createdUsers.length > 0) {
+        toast({
+          title: "Success",
+          description: `Created ${createdUsers.length} login accounts successfully`,
+        });
 
-      // Reset form
-      setSelectedSubjects([]);
-      setSelectedClasses([]);
-      setSelectedRole('');
-      setLoginPreviews([]);
+        // Reset form
+        setSelectedSubjects([]);
+        setSelectedClasses([]);
+        setSelectedRole('');
+        setLoginPreviews([]);
+      } else {
+        toast({
+          title: "Error",
+          description: "No accounts were created. Please check the console for errors.",
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
       console.error('Error creating logins:', error);
       toast({
         title: "Error",
-        description: "Failed to create some login accounts. Please try again.",
+        description: "Failed to create login accounts. Please try again.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Ensure classes and subjects exist in database
+  const ensureClassesAndSubjectsExist = async () => {
+    try {
+      // Get existing classes and subjects
+      const { data: existingClasses } = await supabase.from('classes').select('name');
+      const { data: existingSubjects } = await supabase.from('subjects').select('name');
+
+      const existingClassNames = existingClasses?.map(c => c.name) || [];
+      const existingSubjectNames = existingSubjects?.map(s => s.name) || [];
+
+      // Insert missing classes
+      const missingClasses = CLASSES.filter(className => !existingClassNames.includes(className));
+      if (missingClasses.length > 0) {
+        const classInserts = missingClasses.map(name => ({ name }));
+        await supabase.from('classes').insert(classInserts);
+      }
+
+      // Insert missing subjects with auto-generated codes
+      const missingSubjects = SUBJECTS.filter(subjectName => !existingSubjectNames.includes(subjectName));
+      if (missingSubjects.length > 0) {
+        const subjectInserts = missingSubjects.map(name => ({
+          name,
+          code: generateSubjectCode(name)
+        }));
+        await supabase.from('subjects').insert(subjectInserts);
+      }
+    } catch (error) {
+      console.error('Error ensuring classes/subjects exist:', error);
+    }
+  };
+
+  // Generate subject code automatically
+  const generateSubjectCode = (subjectName: string) => {
+    return subjectName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 4);
   };
 
   return (
@@ -279,8 +350,8 @@ const CreateLoginDetails = () => {
                 value={schoolAlias}
                 onChange={(e) => setSchoolAlias(e.target.value)}
                 placeholder="e.g., greenfield"
-                description="Used in email generation (auto-filled from your school profile)"
               />
+              <p className="text-sm text-gray-500">Used in email generation (auto-filled from your school profile)</p>
             </div>
 
             {/* User Role */}
