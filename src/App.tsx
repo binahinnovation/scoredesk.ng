@@ -17,6 +17,7 @@ import { initStorage } from "./integrations/supabase/storage";
 // New Pages
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/users/UserManagement";
+import CreateLoginDetails from "./pages/users/CreateLoginDetails";
 import StudentManagement from "./pages/students/StudentManagement";
 import ClassSubjectManagement from "./pages/classes/ClassSubjectManagement";
 import ResultEntry from "./pages/results/ResultEntry";
@@ -72,6 +73,7 @@ const AppRoutes = () => {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
+        <Route path="users/create-login" element={<CreateLoginDetails />} />
         <Route path="students" element={<StudentManagement />} />
         <Route path="classes" element={<ClassSubjectManagement />} />
         <Route path="results/entry" element={<ResultEntry />} />

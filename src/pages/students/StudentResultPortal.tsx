@@ -1,16 +1,14 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Eye, Download } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff, GraduationCap, BookOpen, Award } from 'lucide-react';
 
-interface StudentResult {
+interface Result {
   subject: string;
   subject_code: string;
   assessment: string;
@@ -28,21 +26,22 @@ interface ApiResponse {
   success: boolean;
   message: string;
   student?: Student;
-  results?: StudentResult[];
+  results?: Result[];
 }
 
-export default function StudentResultPortal() {
-  const [studentId, setStudentId] = useState("");
-  const [scratchCardPin, setScratchCardPin] = useState("");
+const StudentResultPortal = () => {
+  const [studentId, setStudentId] = useState('');
+  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<StudentResult[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [student, setStudent] = useState<Student | null>(null);
-  const [hasViewed, setHasViewed] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const { toast } = useToast();
 
-  const viewResults = async () => {
-    if (!studentId.trim() || !scratchCardPin.trim()) {
+  const handleViewResults = async () => {
+    if (!studentId.trim() || !pin.trim()) {
       toast({
-        title: "Error",
+        title: "Missing Information",
         description: "Please enter both Student ID and Scratch Card PIN",
         variant: "destructive",
       });
@@ -51,59 +50,69 @@ export default function StudentResultPortal() {
 
     setLoading(true);
     try {
-      // Get current term
-      const { data: currentTerm, error: termError } = await supabase
+      // Get current term (for now, we'll use the first available term)
+      const { data: terms } = await supabase
         .from('terms')
         .select('id')
         .eq('is_current', true)
-        .single();
+        .limit(1);
 
-      if (termError) throw termError;
-
-      if (!currentTerm) {
+      if (!terms || terms.length === 0) {
         toast({
           title: "Error",
-          description: "No current term found. Please contact administration.",
+          description: "No active term found. Please contact your school administrator.",
           variant: "destructive",
         });
         return;
       }
 
-      // Use the database function to validate and get results
+      const termId = terms[0].id;
+
+      // Call the database function to use scratch card and get results
       const { data, error } = await supabase.rpc('use_scratch_card_for_results', {
-        p_pin: scratchCardPin,
+        p_pin: pin,
         p_student_id: studentId,
-        p_term_id: currentTerm.id
+        p_term_id: termId
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error calling function:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch results. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Type cast the response data
-      const response = data as ApiResponse;
+      // Type assertion with proper validation
+      const response = data as unknown as ApiResponse;
+      
+      if (!response || typeof response !== 'object' || !('success' in response)) {
+        throw new Error('Invalid response format');
+      }
 
-      if (!response.success) {
+      if (response.success) {
+        setStudent(response.student || null);
+        setResults(response.results || []);
+        toast({
+          title: "Success",
+          description: response.message,
+        });
+      } else {
         toast({
           title: "Error",
           description: response.message,
           variant: "destructive",
         });
-        return;
+        setResults([]);
+        setStudent(null);
       }
-
-      setStudent(response.student || null);
-      setResults(response.results || []);
-      setHasViewed(true);
-
-      toast({
-        title: "Success",
-        description: response.message,
-      });
-
     } catch (error) {
-      console.error('Error viewing results:', error);
+      console.error('Error fetching results:', error);
       toast({
         title: "Error",
-        description: "Failed to retrieve results. Please check your details and try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -111,230 +120,170 @@ export default function StudentResultPortal() {
     }
   };
 
-  const calculateTotalScore = () => {
-    return results.reduce((sum, result) => sum + result.score, 0);
-  };
-
-  const calculateTotalMaxScore = () => {
-    return results.reduce((sum, result) => sum + result.max_score, 0);
-  };
-
-  const calculateOverallPercentage = () => {
-    const total = calculateTotalScore();
-    const maxTotal = calculateTotalMaxScore();
-    return maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
-  };
-
-  const exportResults = () => {
-    if (!results.length || !student) return;
-
-    const csvContent = [
-      `Student: ${student.name} (${student.student_id})`,
-      "",
-      "Subject,Assessment,Score,Max Score,Percentage",
-      ...results.map(result => 
-        `${result.subject},${result.assessment},${result.score},${result.max_score},${result.percentage}%`
-      ),
-      "",
-      `Total Score: ${calculateTotalScore()}/${calculateTotalMaxScore()}`,
-      `Overall Percentage: ${calculateOverallPercentage()}%`
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${student.student_id}-results.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const reset = () => {
-    setStudentId("");
-    setScratchCardPin("");
-    setResults([]);
-    setStudent(null);
-    setHasViewed(false);
+  const calculateOverallGrade = (percentage: number) => {
+    if (percentage >= 80) return { grade: 'A', color: 'text-green-600' };
+    if (percentage >= 70) return { grade: 'B', color: 'text-blue-600' };
+    if (percentage >= 60) return { grade: 'C', color: 'text-yellow-600' };
+    if (percentage >= 50) return { grade: 'D', color: 'text-orange-600' };
+    return { grade: 'F', color: 'text-red-600' };
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center py-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Student Result Portal</h1>
-          <p className="text-lg text-gray-600">View your academic results using your Student ID and Scratch Card</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <GraduationCap className="h-12 w-12 text-blue-600 mr-3" />
+            <h1 className="text-4xl font-bold text-gray-900">Student Result Portal</h1>
+          </div>
+          <p className="text-gray-600 text-lg">View your academic results using your Student ID and Scratch Card</p>
         </div>
 
-        {!hasViewed ? (
-          <Card className="mx-auto max-w-md">
-            <CardHeader>
-              <CardTitle className="text-center">Access Your Results</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BookOpen className="h-5 w-5 mr-2" />
+              Access Your Results
+            </CardTitle>
+            <CardDescription>
+              Enter your Student ID and Scratch Card PIN to view your approved results
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="studentId">Student ID</Label>
                 <Input
                   id="studentId"
+                  type="text"
                   placeholder="Enter your Student ID"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                 />
               </div>
-              
-              <div>
-                <Label htmlFor="scratchPin">Scratch Card PIN</Label>
-                <Input
-                  id="scratchPin"
-                  placeholder="Enter 16-digit PIN"
-                  value={scratchCardPin}
-                  onChange={(e) => setScratchCardPin(e.target.value)}
-                  maxLength={16}
-                />
+              <div className="space-y-2">
+                <Label htmlFor="pin">Scratch Card PIN</Label>
+                <div className="relative">
+                  <Input
+                    id="pin"
+                    type={showPin ? "text" : "password"}
+                    placeholder="Enter Scratch Card PIN"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2"
+                    onClick={() => setShowPin(!showPin)}
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
-              
-              <Button 
-                onClick={viewResults} 
-                disabled={loading}
-                className="w-full"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                {loading ? "Loading..." : "View Results"}
-              </Button>
+            </div>
+            <Button 
+              onClick={handleViewResults} 
+              disabled={loading} 
+              className="w-full"
+              size="lg"
+            >
+              {loading ? "Loading..." : "View My Results"}
+            </Button>
+          </CardContent>
+        </Card>
 
-              <div className="text-sm text-muted-foreground text-center mt-4">
-                <AlertCircle className="h-4 w-4 inline mr-1" />
-                Each scratch card can only be used once per student per term
+        {student && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Award className="h-5 w-5 mr-2" />
+                Student Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Student Name</Label>
+                  <p className="text-lg font-semibold">{student.name}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Student ID</Label>
+                  <p className="text-lg font-semibold">{student.student_id}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-6">
-            {/* Student Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Student Information</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={exportResults}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </Button>
-                    <Button variant="outline" onClick={reset}>
-                      View Another Result
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Name</Label>
-                    <p className="font-semibold">{student?.name}</p>
-                  </div>
-                  <div>
-                    <Label>Student ID</Label>
-                    <p className="font-semibold">{student?.student_id}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        )}
 
-            {/* Results Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Results Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{calculateTotalScore()}</p>
-                    <p className="text-sm text-blue-600">Total Score</p>
-                  </div>
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{calculateTotalMaxScore()}</p>
-                    <p className="text-sm text-green-600">Maximum Score</p>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{calculateOverallPercentage()}%</p>
-                    <p className="text-sm text-purple-600">Overall Percentage</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {results.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Academic Results</CardTitle>
+              <CardDescription>Your approved results for the current term</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 px-4 py-2 text-left">Subject</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Assessment</th>
+                      <th className="border border-gray-300 px-4 py-2 text-center">Score</th>
+                      <th className="border border-gray-300 px-4 py-2 text-center">Max Score</th>
+                      <th className="border border-gray-300 px-4 py-2 text-center">Percentage</th>
+                      <th className="border border-gray-300 px-4 py-2 text-center">Grade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((result, index) => {
+                      const gradeInfo = calculateOverallGrade(result.percentage);
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="border border-gray-300 px-4 py-2 font-medium">
+                            {result.subject}
+                            {result.subject_code && (
+                              <span className="text-sm text-gray-500 ml-1">({result.subject_code})</span>
+                            )}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">{result.assessment}</td>
+                          <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
+                            {result.score}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            {result.max_score}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
+                            {result.percentage}%
+                          </td>
+                          <td className={`border border-gray-300 px-4 py-2 text-center font-bold ${gradeInfo.color}`}>
+                            {gradeInfo.grade}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            {/* Detailed Results */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Detailed Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {results.length === 0 ? (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Results Available</h3>
-                    <p className="text-muted-foreground">
-                      Your results are not yet available or have not been approved. 
-                      Please contact your teacher or check back later.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Assessment</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead>Max Score</TableHead>
-                          <TableHead>Percentage</TableHead>
-                          <TableHead>Grade</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {results.map((result, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">
-                              {result.subject}
-                              {result.subject_code && (
-                                <span className="text-sm text-muted-foreground ml-2">
-                                  ({result.subject_code})
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>{result.assessment}</TableCell>
-                            <TableCell>{result.score}</TableCell>
-                            <TableCell>{result.max_score}</TableCell>
-                            <TableCell>{result.percentage}%</TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={
-                                  result.percentage >= 80 ? "default" :
-                                  result.percentage >= 70 ? "secondary" :
-                                  result.percentage >= 60 ? "outline" : "destructive"
-                                }
-                                className={
-                                  result.percentage >= 80 ? "bg-green-100 text-green-800" :
-                                  result.percentage >= 70 ? "bg-blue-100 text-blue-800" :
-                                  result.percentage >= 60 ? "bg-yellow-100 text-yellow-800" : ""
-                                }
-                              >
-                                {result.percentage >= 80 ? "A" :
-                                 result.percentage >= 70 ? "B" :
-                                 result.percentage >= 60 ? "C" :
-                                 result.percentage >= 50 ? "D" : "F"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        {results.length === 0 && student && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Results Available</h3>
+              <p className="text-gray-600">
+                No approved results found for the current term. Please contact your teacher or check back later.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default StudentResultPortal;
