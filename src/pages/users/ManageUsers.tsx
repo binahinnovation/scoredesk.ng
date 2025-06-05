@@ -9,31 +9,53 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
-interface UserWithRole {
+interface UserRoleWithProfile {
   id: string;
   user_id: string;
   role: string;
-  profiles?: {
-    full_name: string;
-    school_name: string;
-  } | null;
+  full_name?: string;
+  school_name?: string;
 }
 
 const ManageUsers = () => {
-  const { data: usersData, loading, error, refetch } = useSupabaseQuery<UserWithRole[]>(
+  const { data: usersData, loading, error, refetch } = useSupabaseQuery<UserRoleWithProfile[]>(
     async () => {
-      const { data, error } = await supabase
+      // First get user roles
+      const { data: userRoles, error: userRolesError } = await supabase
         .from('user_roles')
-        .select(`
-          id,
-          user_id,
-          role,
-          profiles!user_roles_user_id_fkey (
-            full_name,
-            school_name
-          )
-        `);
-      return { data: data as UserWithRole[], error };
+        .select('id, user_id, role');
+
+      if (userRolesError) {
+        throw userRolesError;
+      }
+
+      // Then get profiles for each user
+      const userIds = userRoles?.map(ur => ur.user_id) || [];
+      
+      if (userIds.length === 0) {
+        return { data: [], error: null };
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, school_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        throw profilesError;
+      }
+
+      // Combine the data
+      const combinedData = userRoles?.map(userRole => {
+        const profile = profiles?.find(p => p.id === userRole.user_id);
+        return {
+          ...userRole,
+          full_name: profile?.full_name,
+          school_name: profile?.school_name
+        };
+      }) || [];
+
+      return { data: combinedData, error: null };
     },
     []
   );
@@ -116,10 +138,10 @@ const ManageUsers = () => {
                 users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      {user.profiles?.full_name || 'N/A'}
+                      {user.full_name || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {user.profiles?.school_name || 'N/A'}
+                      {user.school_name || 'N/A'}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{user.role}</Badge>

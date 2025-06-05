@@ -46,15 +46,12 @@ export default function Dashboard() {
   const { data: currentTermData, loading: currentTermLoading } = useSupabaseQuery(
     async () => {
       const { data, error } = await supabase
-        .from('settings')
-        .select('setting_value')
-        .eq('setting_key', 'current_term')
+        .from('terms')
+        .select('name, academic_year')
+        .eq('is_current', true)
         .single();
       
-      if (data?.setting_value) {
-        return { data: data.setting_value, error };
-      }
-      return { data: null, error };
+      return { data, error };
     },
     []
   );
@@ -99,7 +96,7 @@ export default function Dashboard() {
         <div>
           <h3 className="font-medium text-emerald-800">Current Academic Period</h3>
           <h2 className="text-2xl font-bold text-emerald-700">
-            {currentTermData ? `${currentTermData.term_name} ${currentTermData.academic_year}` : 'No current term set'}
+            {currentTermData ? `${currentTermData.name} ${currentTermData.academic_year}` : 'No current term set'}
           </h2>
         </div>
         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">

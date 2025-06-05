@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Settings, Plus, Archive } from 'lucide-react';
+import { Calendar, Settings, Plus } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface Term {
@@ -17,12 +17,6 @@ interface Term {
   start_date: string;
   end_date: string;
   is_current: boolean;
-}
-
-interface CurrentTermSetting {
-  term_id: string | null;
-  term_name: string;
-  academic_year: string;
 }
 
 const TermManagement = () => {
@@ -46,21 +40,7 @@ const TermManagement = () => {
     []
   );
 
-  const { data: currentTermSetting, loading: settingLoading, refetch: refetchSetting } = useSupabaseQuery<CurrentTermSetting>(
-    async () => {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('setting_value')
-        .eq('setting_key', 'current_term')
-        .single();
-      
-      if (data) {
-        return { data: data.setting_value as CurrentTermSetting, error };
-      }
-      return { data: null, error };
-    },
-    []
-  );
+  const currentTerm = terms?.find(term => term.is_current);
 
   const createTerm = async () => {
     try {
@@ -93,44 +73,27 @@ const TermManagement = () => {
     }
   };
 
-  const setCurrentTerm = async (termId: string, termName: string, academicYear: string) => {
+  const setCurrentTerm = async (termId: string) => {
     try {
-      // Archive current term data if switching
-      if (currentTermSetting?.term_id && currentTermSetting.term_id !== termId) {
-        await archiveCurrentTerm();
-      }
-
-      // Update current term setting
-      const { error } = await supabase
-        .from('settings')
-        .upsert({
-          setting_key: 'current_term',
-          setting_value: {
-            term_id: termId,
-            term_name: termName,
-            academic_year: academicYear
-          }
-        });
-
-      if (error) throw error;
-
-      // Update is_current flag in terms table
+      // First, set all terms to not current
       await supabase
         .from('terms')
         .update({ is_current: false })
         .neq('id', 'none');
 
-      await supabase
+      // Then set the selected term as current
+      const { error } = await supabase
         .from('terms')
         .update({ is_current: true })
         .eq('id', termId);
 
+      if (error) throw error;
+
       toast({
         title: "Success",
-        description: `Current term set to ${termName} ${academicYear}`,
+        description: "Current term updated successfully",
       });
 
-      refetchSetting();
       refetchTerms();
     } catch (error) {
       toast({
@@ -141,39 +104,7 @@ const TermManagement = () => {
     }
   };
 
-  const archiveCurrentTerm = async () => {
-    if (!currentTermSetting?.term_id) return;
-
-    try {
-      // Count results and students for archiving
-      const { data: resultsCount } = await supabase
-        .from('results')
-        .select('id', { count: 'exact', head: true })
-        .eq('term_id', currentTermSetting.term_id);
-
-      const { data: studentsCount } = await supabase
-        .from('students')
-        .select('id', { count: 'exact', head: true });
-
-      // Create archive entry
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      await supabase
-        .from('term_archives')
-        .insert({
-          term_id: currentTermSetting.term_id,
-          academic_year: currentTermSetting.academic_year,
-          archived_by: user?.id,
-          results_count: resultsCount || 0,
-          students_count: studentsCount || 0
-        });
-
-    } catch (error) {
-      console.error('Error archiving term:', error);
-    }
-  };
-
-  if (termsLoading || settingLoading) {
+  if (termsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -204,10 +135,10 @@ const TermManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {currentTermSetting ? (
+          {currentTerm ? (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-semibold text-blue-800">
-                {currentTermSetting.term_name} - {currentTermSetting.academic_year}
+                {currentTerm.name} - {currentTerm.academic_year}
               </h3>
               <p className="text-sm text-blue-600 mt-1">
                 All new results and data will be associated with this term
@@ -320,7 +251,7 @@ const TermManagement = () => {
                       </span>
                     ) : (
                       <Button
-                        onClick={() => setCurrentTerm(term.id, term.name, term.academic_year)}
+                        onClick={() => setCurrentTerm(term.id)}
                         variant="outline"
                         size="sm"
                       >

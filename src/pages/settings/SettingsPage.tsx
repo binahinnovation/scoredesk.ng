@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings, Calendar, Database, FileText, Users } from 'lucide-react';
+import { Settings, Calendar, Database, FileText, Users, School, Mail, Palette } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SettingsPage = () => {
@@ -33,6 +33,41 @@ const SettingsPage = () => {
             <p className="text-sm text-gray-600">
               Create, manage, and switch between academic terms. Set the current active term for the school.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/branding')}>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <School className="h-5 w-5 mr-2 text-purple-600" />
+              School Branding
+            </CardTitle>
+            <CardDescription>
+              Customize school identity and branding
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Upload school logo, set school colors, and customize the overall appearance of the system.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow opacity-50">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Mail className="h-5 w-5 mr-2 text-gray-400" />
+              Email Settings
+            </CardTitle>
+            <CardDescription>
+              Configure email notifications
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Set up SMTP settings and configure automated email notifications for results and announcements.
+            </p>
+            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
           </CardContent>
         </Card>
 
