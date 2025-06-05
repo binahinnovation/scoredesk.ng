@@ -11,11 +11,12 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface UserWithRole {
   id: string;
+  user_id: string;
   role: string;
   profiles?: {
     full_name: string;
     school_name: string;
-  };
+  } | null;
 }
 
 const ManageUsers = () => {
@@ -27,12 +28,12 @@ const ManageUsers = () => {
           id,
           user_id,
           role,
-          profiles:user_id (
+          profiles!user_roles_user_id_fkey (
             full_name,
             school_name
           )
         `);
-      return { data, error };
+      return { data: data as UserWithRole[], error };
     },
     []
   );
@@ -44,6 +45,35 @@ const ManageUsers = () => {
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
         <span className="ml-2">Loading users...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Users className="h-8 w-8 text-blue-600 mr-3" />
+            <div>
+              <h1 className="text-3xl font-bold">Manage Users</h1>
+              <p className="text-gray-600">View and manage user accounts and permissions</p>
+            </div>
+          </div>
+          <Button onClick={refetch} variant="outline">
+            Retry
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-600">
+              <p>Error loading users: {error}</p>
+              <Button onClick={refetch} className="mt-4">
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

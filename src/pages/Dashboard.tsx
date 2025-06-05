@@ -46,11 +46,15 @@ export default function Dashboard() {
   const { data: currentTermData, loading: currentTermLoading } = useSupabaseQuery(
     async () => {
       const { data, error } = await supabase
-        .from('terms')
-        .select('name, academic_year, end_date')
-        .eq('is_current', true)
+        .from('settings')
+        .select('setting_value')
+        .eq('setting_key', 'current_term')
         .single();
-      return { data, error };
+      
+      if (data?.setting_value) {
+        return { data: data.setting_value, error };
+      }
+      return { data: null, error };
     },
     []
   );
@@ -60,7 +64,7 @@ export default function Dashboard() {
   const activeStudents = studentsData?.filter(s => s.status === 'Active').length || 0;
   
   const totalTeachers = userRolesData?.filter(u => 
-    u.role === 'Subject Teacher' || u.role === 'Form Master' || u.role === 'Exam Officer'
+    u.role === 'Subject Teacher' || u.role === 'Form Teacher' || u.role === 'Exam Officer'
   ).length || 0;
   
   const pendingResults = resultsData?.filter(r => !r.is_approved).length || 0;
@@ -68,11 +72,6 @@ export default function Dashboard() {
   const usedScratchCards = scratchCardsData?.filter(s => s.status === 'Used').length || 0;
   const totalScratchCards = scratchCardsData?.length || 0;
   const unusedScratchCards = totalScratchCards - usedScratchCards;
-
-  // Calculate days until term ends
-  const daysUntilTermEnd = currentTermData?.end_date 
-    ? Math.ceil((new Date(currentTermData.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
 
   // Prepare scratch card chart data
   const scratchCardChartData = [
@@ -100,13 +99,13 @@ export default function Dashboard() {
         <div>
           <h3 className="font-medium text-emerald-800">Current Academic Period</h3>
           <h2 className="text-2xl font-bold text-emerald-700">
-            {currentTermData ? `${currentTermData.name} ${currentTermData.academic_year}` : 'No current term set'}
+            {currentTermData ? `${currentTermData.term_name} ${currentTermData.academic_year}` : 'No current term set'}
           </h2>
         </div>
         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">
           <Clock className="h-5 w-5 text-emerald-600" />
           <span className="text-sm font-medium">
-            {daysUntilTermEnd > 0 ? `Term ends in ${daysUntilTermEnd} days` : 'Term ended'}
+            {currentTermData ? 'Active Session' : 'Please set current term in Settings'}
           </span>
         </div>
       </div>
@@ -151,7 +150,7 @@ export default function Dashboard() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-7">
-        {/* Recent Activity - This would need more complex queries to get real activity */}
+        {/* System Overview */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>System Overview</CardTitle>

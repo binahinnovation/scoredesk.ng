@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,6 +28,7 @@ import SchoolBranding from "./pages/branding/SchoolBranding";
 import ScratchCards from "./pages/scratchcards/ScratchCards";
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
+import TermManagement from "./pages/settings/TermManagement";
 import StudentResultPortal from "./pages/students/StudentResultPortal";
 import ManageUsers from "./pages/users/ManageUsers";
 import RolePermissions from "./pages/users/RolePermissions";
@@ -87,6 +89,7 @@ const AppRoutes = () => {
         <Route path="scratchcards" element={<ScratchCards />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/terms" element={<TermManagement />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />
