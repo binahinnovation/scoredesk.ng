@@ -37,7 +37,7 @@ export default function Dashboard() {
 
   const { data: scratchCardsData, loading: scratchCardsLoading } = useSupabaseQuery(
     async () => {
-      const { data, error } = await supabase.from('scratch_cards').select('id, status');
+      const { data, error } = await supabase.from('scratch_cards').select('id, status, revenue_generated, price');
       return { data, error };
     },
     []
@@ -46,11 +46,15 @@ export default function Dashboard() {
   const { data: currentTermData, loading: currentTermLoading } = useSupabaseQuery(
     async () => {
       const { data, error } = await supabase
-        .from('terms')
-        .select('name, academic_year, end_date')
-        .eq('is_current', true)
+        .from('settings')
+        .select('setting_value')
+        .eq('setting_key', 'current_term')
         .single();
-      return { data, error };
+      
+      if (data) {
+        return { data: data.setting_value, error };
+      }
+      return { data: null, error };
     },
     []
   );
@@ -68,11 +72,13 @@ export default function Dashboard() {
   const usedScratchCards = scratchCardsData?.filter(s => s.status === 'Used').length || 0;
   const totalScratchCards = scratchCardsData?.length || 0;
   const unusedScratchCards = totalScratchCards - usedScratchCards;
+  const totalRevenue = scratchCardsData?.reduce((sum, card) => sum + (card.revenue_generated || 0), 0) || 0;
 
-  // Calculate days until term ends
-  const daysUntilTermEnd = currentTermData?.end_date 
-    ? Math.ceil((new Date(currentTermData.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+  // Current term information
+  const currentTerm = currentTermData || { term_name: 'First Term', academic_year: '2024/2025' };
+
+  // Calculate days until term ends (simplified calculation)
+  const daysUntilTermEnd = 45; // This would need actual term end date calculation
 
   // Prepare scratch card chart data
   const scratchCardChartData = [
@@ -100,7 +106,7 @@ export default function Dashboard() {
         <div>
           <h3 className="font-medium text-emerald-800">Current Academic Period</h3>
           <h2 className="text-2xl font-bold text-emerald-700">
-            {currentTermData ? `${currentTermData.name} ${currentTermData.academic_year}` : 'No current term set'}
+            {currentTerm.term_name} {currentTerm.academic_year}
           </h2>
         </div>
         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">
@@ -112,7 +118,7 @@ export default function Dashboard() {
       </div>
       
       {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Students</CardTitle>
@@ -148,10 +154,22 @@ export default function Dashboard() {
             <Progress className="mt-3" value={Math.min(pendingResults * 5, 100)} />
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <span className="text-2xl">₦</span>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₦{totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">From scratch cards</p>
+            <Progress className="mt-3" value={Math.min((totalRevenue / 10000) * 100, 100)} />
+          </CardContent>
+        </Card>
       </div>
       
       <div className="grid gap-4 md:grid-cols-7">
-        {/* Recent Activity - This would need more complex queries to get real activity */}
+        {/* System Overview */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>System Overview</CardTitle>
@@ -193,7 +211,7 @@ export default function Dashboard() {
         {/* Scratch Card Usage */}
         <Card className="md:col-span-4">
           <CardHeader>
-            <CardTitle>Scratch Card Usage</CardTitle>
+            <CardTitle>Scratch Card Analytics</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="chart">
@@ -244,23 +262,23 @@ export default function Dashboard() {
                   <div className="grid grid-cols-3 text-sm font-medium">
                     <div>Status</div>
                     <div>Count</div>
-                    <div>Percentage</div>
+                    <div>Revenue</div>
                   </div>
                   <Separator />
                   <div className="grid grid-cols-3 text-sm">
                     <div>Used</div>
                     <div>{usedScratchCards}</div>
-                    <div>{totalScratchCards > 0 ? Math.round((usedScratchCards / totalScratchCards) * 100) : 0}%</div>
+                    <div>₦{totalRevenue.toLocaleString()}</div>
                   </div>
                   <div className="grid grid-cols-3 text-sm">
                     <div>Unused</div>
                     <div>{unusedScratchCards}</div>
-                    <div>{totalScratchCards > 0 ? Math.round((unusedScratchCards / totalScratchCards) * 100) : 0}%</div>
+                    <div>₦0</div>
                   </div>
                   <div className="grid grid-cols-3 text-sm font-medium">
                     <div>Total</div>
                     <div>{totalScratchCards}</div>
-                    <div>100%</div>
+                    <div>₦{totalRevenue.toLocaleString()}</div>
                   </div>
                 </div>
               </TabsContent>

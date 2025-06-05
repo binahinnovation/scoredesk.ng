@@ -11,11 +11,12 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface UserWithRole {
   id: string;
+  user_id: string;
   role: string;
   profiles?: {
     full_name: string;
     school_name: string;
-  };
+  } | null;
 }
 
 const ManageUsers = () => {
@@ -27,7 +28,7 @@ const ManageUsers = () => {
           id,
           user_id,
           role,
-          profiles:user_id (
+          profiles!user_roles_user_id_fkey (
             full_name,
             school_name
           )
@@ -44,6 +45,19 @@ const ManageUsers = () => {
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
         <span className="ml-2">Loading users...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">Error loading users: {error}</p>
+          <Button onClick={refetch} variant="outline">
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }

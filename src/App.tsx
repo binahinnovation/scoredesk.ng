@@ -30,6 +30,7 @@ import SettingsPage from "./pages/settings/SettingsPage";
 import StudentResultPortal from "./pages/students/StudentResultPortal";
 import ManageUsers from "./pages/users/ManageUsers";
 import RolePermissions from "./pages/users/RolePermissions";
+import TermManagement from "./pages/settings/TermManagement";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const AppRoutes = () => {
         <Route path="scratchcards" element={<ScratchCards />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="terms" element={<TermManagement />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />

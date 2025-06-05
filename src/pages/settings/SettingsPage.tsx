@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Save, User, Mail, School, Calendar } from "lucide-react";
+import { Save, User, Mail, School, Calendar, Settings, Shield, Palette, Database, FileText, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface UserProfile {
   full_name: string;
@@ -21,6 +22,7 @@ interface UserProfile {
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile>({
     full_name: "",
     school_name: "",
@@ -234,6 +236,68 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Settings Categories */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+              onClick={() => navigate('/terms')}
+            >
+              <Clock className="h-6 w-6" />
+              <span>Term Management</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+              onClick={() => navigate('/branding')}
+            >
+              <Palette className="h-6 w-6" />
+              <span>School Branding</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+              onClick={() => navigate('/users')}
+            >
+              <Shield className="h-6 w-6" />
+              <span>User Permissions</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+            >
+              <Database className="h-6 w-6" />
+              <span>Data Backup</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+              onClick={() => navigate('/reportcards')}
+            >
+              <FileText className="h-6 w-6" />
+              <span>Report Templates</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex flex-col items-center justify-center h-24 space-y-2"
+            >
+              <Settings className="h-6 w-6" />
+              <span>Email Settings</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Security Settings */}
       <Card>

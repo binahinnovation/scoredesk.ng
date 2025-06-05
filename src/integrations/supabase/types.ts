@@ -236,6 +236,8 @@ export type Database = {
           created_at: string
           id: string
           pin: string
+          price: number | null
+          revenue_generated: number | null
           serial_number: string
           status: string
           term_id: string | null
@@ -248,6 +250,8 @@ export type Database = {
           created_at?: string
           id?: string
           pin: string
+          price?: number | null
+          revenue_generated?: number | null
           serial_number: string
           status?: string
           term_id?: string | null
@@ -260,6 +264,8 @@ export type Database = {
           created_at?: string
           id?: string
           pin?: string
+          price?: number | null
+          revenue_generated?: number | null
           serial_number?: string
           status?: string
           term_id?: string | null
@@ -276,6 +282,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       student_rankings: {
         Row: {
@@ -482,6 +512,51 @@ export type Database = {
         }
         Relationships: []
       }
+      term_archives: {
+        Row: {
+          academic_year: string
+          archived_at: string
+          archived_by: string | null
+          id: string
+          results_count: number | null
+          students_count: number | null
+          term_id: string
+        }
+        Insert: {
+          academic_year: string
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          results_count?: number | null
+          students_count?: number | null
+          term_id: string
+        }
+        Update: {
+          academic_year?: string
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          results_count?: number | null
+          students_count?: number | null
+          term_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_archives_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_archives_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       terms: {
         Row: {
           academic_year: string
@@ -534,7 +609,15 @@ export type Database = {
           role?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
