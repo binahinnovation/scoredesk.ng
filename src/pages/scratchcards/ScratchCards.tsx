@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { CreditCard, Plus, Eye, RefreshCw, AlertCircle, DollarSign } from 'lucide-react';
+import { CreditCard, Plus, Eye, RefreshCw, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ScratchCard {
@@ -30,7 +30,6 @@ interface ScratchCard {
 interface Term {
   id: string;
   name: string;
-  academic_year: string;
   created_at: string;
 }
 
@@ -66,7 +65,7 @@ const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({ open, setOpen, ca
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="amount" className="text-right">
-                Amount (₦)
+                Amount
               </Label>
               <Input type="text" id="amount" value={card.amount.toString()} className="col-span-3" readOnly />
             </div>
@@ -75,6 +74,12 @@ const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({ open, setOpen, ca
                 Status
               </Label>
               <Input type="text" id="status" value={card.status} className="col-span-3" readOnly />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="term" className="text-right">
+                Term ID
+              </Label>
+              <Input type="text" id="term" value={card.term_id} className="col-span-3" readOnly />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="usedBy" className="text-right">
@@ -86,7 +91,13 @@ const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({ open, setOpen, ca
               <Label htmlFor="usedAt" className="text-right">
                 Used At
               </Label>
-              <Input type="text" id="usedAt" value={card.used_at ? new Date(card.used_at).toLocaleString() : 'N/A'} className="col-span-3" readOnly />
+              <Input type="text" id="usedAt" value={card.used_at || 'N/A'} className="col-span-3" readOnly />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="createdAt" className="text-right">
+                Created At
+              </Label>
+              <Input type="text" id="createdAt" value={card.created_at} className="col-span-3" readOnly />
             </div>
           </div>
         ) : (
@@ -108,8 +119,7 @@ const generatePIN = () => {
 };
 
 const ScratchCards = () => {
-  const [quantity, setQuantity] = useState<number>(10);
-  const [cardPrice, setCardPrice] = useState<number>(100);
+  const [amount, setAmount] = useState<number>(10);
   const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [cardToView, setCardToView] = useState<ScratchCard | null>(null);
   const [showCardDetails, setShowCardDetails] = useState<boolean>(false);
@@ -144,12 +154,6 @@ const ScratchCards = () => {
   const scratchCards = scratchCardsData || [];
   const terms = termsData || [];
 
-  // Calculate revenue statistics
-  const totalRevenue = scratchCards.filter(card => card.status === 'Used').reduce((sum, card) => sum + card.amount, 0);
-  const potentialRevenue = scratchCards.reduce((sum, card) => sum + card.amount, 0);
-  const usedCards = scratchCards.filter(card => card.status === 'Used').length;
-  const activeCards = scratchCards.filter(card => card.status === 'Active').length;
-
   const generateScratchCards = async () => {
     if (!selectedTerm) {
       toast({
@@ -160,12 +164,11 @@ const ScratchCards = () => {
       return;
     }
 
-    const newCards = Array.from({ length: quantity }, () => ({
+    const newCards = Array.from({ length: amount }, () => ({
       serial_number: generateSerialNumber(),
       pin: generatePIN(),
-      amount: cardPrice,
+      amount: 100,
       term_id: selectedTerm,
-      status: 'Active'
     }));
 
     try {
@@ -183,7 +186,7 @@ const ScratchCards = () => {
       } else {
         toast({
           title: "Success",
-          description: `Successfully generated ${quantity} scratch cards at ₦${cardPrice} each.`,
+          description: `Successfully generated ${amount} scratch cards.`,
         });
         refetchCards(); // Refresh the list after generating
       }
@@ -221,53 +224,6 @@ const ScratchCards = () => {
         </Button>
       </div>
 
-      {/* Revenue Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">From {usedCards} used cards</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Potential Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{potentialRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total value of all cards</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Cards</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCards}</div>
-            <p className="text-xs text-muted-foreground">Ready for use</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Used Cards</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{usedCards}</div>
-            <p className="text-xs text-muted-foreground">Successfully redeemed</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Error Display */}
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -295,24 +251,14 @@ const ScratchCards = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
+              <Label htmlFor="amount">Amount to Generate</Label>
               <Input
-                id="quantity"
+                id="amount"
                 type="number"
                 min="1"
                 max="500"
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="price">Price per Card (₦)</Label>
-              <Input
-                id="price"
-                type="number"
-                min="1"
-                value={cardPrice}
-                onChange={(e) => setCardPrice(parseInt(e.target.value))}
+                value={amount}
+                onChange={(e) => setAmount(parseInt(e.target.value))}
               />
             </div>
             <div>
@@ -323,18 +269,13 @@ const ScratchCards = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {terms.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.name} - {term.academic_year}
-                    </SelectItem>
+                    <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Total Value: <span className="font-bold">₦{(quantity * cardPrice).toLocaleString()}</span></p>
-            </div>
             <Button onClick={generateScratchCards} className="w-full">
-              Generate {quantity} Scratch Cards
+              Generate Scratch Cards
             </Button>
           </CardContent>
         </Card>
@@ -364,6 +305,7 @@ const ScratchCards = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Term</TableHead>
                       <TableHead>Used By</TableHead>
+                      <TableHead>Used At</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -371,9 +313,9 @@ const ScratchCards = () => {
                     {scratchCards.length > 0 ? (
                       scratchCards.map((card) => (
                         <TableRow key={card.id}>
-                          <TableCell className="font-mono">{card.serial_number}</TableCell>
-                          <TableCell className="font-mono">{card.pin}</TableCell>
-                          <TableCell>₦{card.amount.toLocaleString()}</TableCell>
+                          <TableCell>{card.serial_number}</TableCell>
+                          <TableCell>{card.pin}</TableCell>
+                          <TableCell>{card.amount}</TableCell>
                           <TableCell>
                             {card.status === 'Used' ? (
                               <Badge variant="destructive">Used</Badge>
@@ -385,6 +327,7 @@ const ScratchCards = () => {
                             {terms.find(term => term.id === card.term_id)?.name || 'Unknown'}
                           </TableCell>
                           <TableCell>{card.used_by || 'N/A'}</TableCell>
+                          <TableCell>{card.used_at ? new Date(card.used_at).toLocaleDateString() : 'N/A'}</TableCell>
                           <TableCell>
                             <Button variant="ghost" size="sm" onClick={() => handleCardView(card)}>
                               <Eye className="h-4 w-4 mr-2" />
@@ -395,7 +338,7 @@ const ScratchCards = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                           No scratch cards found. Generate some cards to get started.
                         </TableCell>
                       </TableRow>

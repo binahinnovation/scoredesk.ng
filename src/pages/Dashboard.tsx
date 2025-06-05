@@ -47,10 +47,9 @@ export default function Dashboard() {
     async () => {
       const { data, error } = await supabase
         .from('terms')
-        .select('name, academic_year')
+        .select('name, academic_year, end_date')
         .eq('is_current', true)
         .single();
-      
       return { data, error };
     },
     []
@@ -61,7 +60,7 @@ export default function Dashboard() {
   const activeStudents = studentsData?.filter(s => s.status === 'Active').length || 0;
   
   const totalTeachers = userRolesData?.filter(u => 
-    u.role === 'Subject Teacher' || u.role === 'Form Teacher' || u.role === 'Exam Officer'
+    u.role === 'Subject Teacher' || u.role === 'Form Master' || u.role === 'Exam Officer'
   ).length || 0;
   
   const pendingResults = resultsData?.filter(r => !r.is_approved).length || 0;
@@ -69,6 +68,11 @@ export default function Dashboard() {
   const usedScratchCards = scratchCardsData?.filter(s => s.status === 'Used').length || 0;
   const totalScratchCards = scratchCardsData?.length || 0;
   const unusedScratchCards = totalScratchCards - usedScratchCards;
+
+  // Calculate days until term ends
+  const daysUntilTermEnd = currentTermData?.end_date 
+    ? Math.ceil((new Date(currentTermData.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   // Prepare scratch card chart data
   const scratchCardChartData = [
@@ -102,7 +106,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">
           <Clock className="h-5 w-5 text-emerald-600" />
           <span className="text-sm font-medium">
-            {currentTermData ? 'Active Session' : 'Please set current term in Settings'}
+            {daysUntilTermEnd > 0 ? `Term ends in ${daysUntilTermEnd} days` : 'Term ended'}
           </span>
         </div>
       </div>
@@ -147,7 +151,7 @@ export default function Dashboard() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-7">
-        {/* System Overview */}
+        {/* Recent Activity - This would need more complex queries to get real activity */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>System Overview</CardTitle>
