@@ -26,16 +26,7 @@ export function useUserRole() {
 
         if (error) {
           console.error('Error fetching user role:', error);
-          
-          // Fallback for super admin emails
-          const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-          if (user.email && superAdmins.includes(user.email)) {
-            setUserRole('Principal' as UserRole);
-          } else if (user.user_metadata?.is_super_admin === true) {
-            setUserRole('Principal' as UserRole);
-          } else {
-            setUserRole(null);
-          }
+          setUserRole(null);
         } else if (data) {
           setUserRole(data as UserRole);
         }
@@ -43,7 +34,7 @@ export function useUserRole() {
         console.error('Error in useUserRole hook:', error);
         toast({
           title: "Error fetching role",
-          description: error.message || "Could not retrieve your role information",
+          description: "Could not retrieve your role information. Please contact support.",
           variant: "destructive",
         });
         setUserRole(null);
@@ -57,17 +48,6 @@ export function useUserRole() {
 
   const hasPermission = (feature: string) => {
     if (!userRole) return false;
-    
-    // Special case for super admins
-    const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-    if (user?.email && superAdmins.includes(user.email)) {
-      return true; // Super admin has access to everything
-    }
-    
-    // Check if user was marked as super admin during registration
-    if (user?.user_metadata?.is_super_admin === true) {
-      return true; // User was registered from /signup, grant super admin access
-    }
     
     const permissionEntry = rolePermissionMatrix.find(p => p.name === feature);
     if (!permissionEntry) return false;

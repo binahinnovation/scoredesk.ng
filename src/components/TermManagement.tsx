@@ -54,10 +54,28 @@ const TermManagement = () => {
         .eq('setting_key', 'current_term')
         .single();
       
-      if (data) {
-        return { data: data.setting_value as CurrentTermSetting, error };
+      if (data && data.setting_value) {
+        // Type-safe parsing of the JSON setting value
+        const settingValue = data.setting_value as any;
+        if (typeof settingValue === 'object' && settingValue !== null) {
+          return { 
+            data: {
+              term_id: settingValue.term_id || null,
+              term_name: settingValue.term_name || 'First Term',
+              academic_year: settingValue.academic_year || '2024/2025'
+            } as CurrentTermSetting, 
+            error 
+          };
+        }
       }
-      return { data: null, error };
+      return { 
+        data: { 
+          term_id: null, 
+          term_name: 'First Term', 
+          academic_year: '2024/2025' 
+        } as CurrentTermSetting, 
+        error 
+      };
     },
     []
   );
@@ -65,11 +83,40 @@ const TermManagement = () => {
   const terms = termsData || [];
   const currentTerm = currentTermData || { term_id: null, term_name: 'First Term', academic_year: '2024/2025' };
 
+  const validateInput = (value: string, type: 'term' | 'year' | 'date') => {
+    if (!value.trim()) return false;
+    
+    if (type === 'year') {
+      const yearPattern = /^\d{4}\/\d{4}$/;
+      return yearPattern.test(value);
+    }
+    
+    if (type === 'date') {
+      const date = new Date(value);
+      return !isNaN(date.getTime());
+    }
+    
+    return true;
+  };
+
   const createTerm = async () => {
-    if (!newTermName || !newAcademicYear || !startDate || !endDate) {
+    // Input validation
+    if (!validateInput(newTermName, 'term') || 
+        !validateInput(newAcademicYear, 'year') || 
+        !validateInput(startDate, 'date') || 
+        !validateInput(endDate, 'date')) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
+        title: "Invalid Input",
+        description: "Please check all fields. Academic year should be in format YYYY/YYYY.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      toast({
+        title: "Invalid Dates",
+        description: "Start date must be before end date.",
         variant: "destructive",
       });
       return;
@@ -79,8 +126,8 @@ const TermManagement = () => {
       const { error } = await supabase
         .from('terms')
         .insert({
-          name: newTermName,
-          academic_year: newAcademicYear,
+          name: newTermName.trim(),
+          academic_year: newAcademicYear.trim(),
           start_date: startDate,
           end_date: endDate,
           is_current: false
@@ -102,7 +149,7 @@ const TermManagement = () => {
       console.error("Error creating term:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create term.",
+        description: "Failed to create term. Please try again.",
         variant: "destructive",
       });
     }
@@ -170,7 +217,7 @@ const TermManagement = () => {
       console.error("Error setting current term:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to set current term.",
+        description: "Failed to set current term. Please try again.",
         variant: "destructive",
       });
     }
@@ -237,12 +284,13 @@ const TermManagement = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="academicYear">Academic Year</Label>
+              <Label htmlFor="academicYear">Academic Year (YYYY/YYYY)</Label>
               <Input
                 id="academicYear"
                 placeholder="e.g., 2024/2025"
                 value={newAcademicYear}
                 onChange={(e) => setNewAcademicYear(e.target.value)}
+                pattern="\d{4}/\d{4}"
               />
             </div>
             <div>

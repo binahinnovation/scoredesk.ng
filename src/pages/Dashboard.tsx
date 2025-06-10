@@ -1,49 +1,50 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserRound, BookOpen, GraduationCap, Clock } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
-import { supabase } from "@/integrations/supabase/client";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { Users, BookOpen, GraduationCap, FileText, Calendar } from 'lucide-react';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { supabase } from '@/integrations/supabase/client';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
-export default function Dashboard() {
-  // Fetch real data using our custom hook
-  const { data: studentsData, loading: studentsLoading } = useSupabaseQuery(
+interface DashboardStats {
+  totalStudents: number;
+  totalUsers: number;
+  totalSubjects: number;
+  totalResults: number;
+}
+
+interface CurrentTermData {
+  term_name: string;
+  academic_year: string;
+}
+
+const Dashboard = () => {
+  // Fetch dashboard statistics
+  const { data: stats, loading: statsLoading } = useSupabaseQuery<DashboardStats>(
     async () => {
-      const { data, error } = await supabase.from('students').select('id, status');
-      return { data, error };
+      const [studentsResult, usersResult, subjectsResult, resultsResult] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact' }),
+        supabase.from('profiles').select('id', { count: 'exact' }),
+        supabase.from('subjects').select('id', { count: 'exact' }),
+        supabase.from('results').select('id', { count: 'exact' })
+      ]);
+
+      return {
+        data: {
+          totalStudents: studentsResult.count || 0,
+          totalUsers: usersResult.count || 0,
+          totalSubjects: subjectsResult.count || 0,
+          totalResults: resultsResult.count || 0
+        },
+        error: null
+      };
     },
     []
   );
 
-  const { data: userRolesData, loading: userRolesLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('user_roles').select('id, role');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: resultsData, loading: resultsLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('results').select('id, is_approved');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: scratchCardsData, loading: scratchCardsLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('scratch_cards').select('id, status, revenue_generated, price');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: currentTermData, loading: currentTermLoading } = useSupabaseQuery(
+  // Fetch current term information
+  const { data: currentTerm, loading: termLoading } = useSupabaseQuery<CurrentTermData>(
     async () => {
       const { data, error } = await supabase
         .from('settings')
@@ -51,44 +52,31 @@ export default function Dashboard() {
         .eq('setting_key', 'current_term')
         .single();
       
-      if (data) {
-        return { data: data.setting_value, error };
+      if (data && data.setting_value) {
+        const settingValue = data.setting_value as any;
+        if (typeof settingValue === 'object' && settingValue !== null) {
+          return { 
+            data: {
+              term_name: settingValue.term_name || 'First Term',
+              academic_year: settingValue.academic_year || '2024/2025'
+            },
+            error 
+          };
+        }
       }
-      return { data: null, error };
+      
+      return { 
+        data: { 
+          term_name: 'First Term', 
+          academic_year: '2024/2025' 
+        },
+        error 
+      };
     },
     []
   );
 
-  // Calculate statistics from real data
-  const totalStudents = studentsData?.length || 0;
-  const activeStudents = studentsData?.filter(s => s.status === 'Active').length || 0;
-  
-  const totalTeachers = userRolesData?.filter(u => 
-    u.role === 'Subject Teacher' || u.role === 'Form Master' || u.role === 'Exam Officer'
-  ).length || 0;
-  
-  const pendingResults = resultsData?.filter(r => !r.is_approved).length || 0;
-  
-  const usedScratchCards = scratchCardsData?.filter(s => s.status === 'Used').length || 0;
-  const totalScratchCards = scratchCardsData?.length || 0;
-  const unusedScratchCards = totalScratchCards - usedScratchCards;
-  const totalRevenue = scratchCardsData?.reduce((sum, card) => sum + (card.revenue_generated || 0), 0) || 0;
-
-  // Current term information
-  const currentTerm = currentTermData || { term_name: 'First Term', academic_year: '2024/2025' };
-
-  // Calculate days until term ends (simplified calculation)
-  const daysUntilTermEnd = 45; // This would need actual term end date calculation
-
-  // Prepare scratch card chart data
-  const scratchCardChartData = [
-    { name: 'Used', value: usedScratchCards },
-    { name: 'Unused', value: unusedScratchCards },
-  ];
-
-  const loading = studentsLoading || userRolesLoading || resultsLoading || scratchCardsLoading || currentTermLoading;
-
-  if (loading) {
+  if (statsLoading || termLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -97,195 +85,135 @@ export default function Dashboard() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold text-gray-900">School Dashboard</h1>
-      
-      {/* Current Term Display */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex justify-between items-center">
-        <div>
-          <h3 className="font-medium text-emerald-800">Current Academic Period</h3>
-          <h2 className="text-2xl font-bold text-emerald-700">
-            {currentTerm.term_name} {currentTerm.academic_year}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">
-          <Clock className="h-5 w-5 text-emerald-600" />
-          <span className="text-sm font-medium">
-            {daysUntilTermEnd > 0 ? `Term ends in ${daysUntilTermEnd} days` : 'Term ended'}
-          </span>
-        </div>
-      </div>
-      
-      {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <UserRound className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
-            <p className="text-xs text-muted-foreground">{activeStudents} active students</p>
-            <Progress className="mt-3" value={totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalTeachers}</div>
-            <p className="text-xs text-muted-foreground">Active staff members</p>
-            <Progress className="mt-3" value={Math.min(totalTeachers * 2, 100)} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Results</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingResults}</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
-            <Progress className="mt-3" value={Math.min(pendingResults * 5, 100)} />
-          </CardContent>
-        </Card>
+  const dashboardStats = stats || {
+    totalStudents: 0,
+    totalUsers: 0,
+    totalSubjects: 0,
+    totalResults: 0
+  };
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <span className="text-2xl">₦</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">From scratch cards</p>
-            <Progress className="mt-3" value={Math.min((totalRevenue / 10000) * 100, 100)} />
-          </CardContent>
-        </Card>
+  const termData = currentTerm || {
+    term_name: 'First Term',
+    academic_year: '2024/2025'
+  };
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-gray-600">Welcome to your ScoreDesk dashboard</p>
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-7">
-        {/* System Overview */}
-        <Card className="md:col-span-3">
+
+      {/* Current Term Display */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Calendar className="h-5 w-5 mr-2" />
+            Current Academic Term
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-blue-600">
+            {termData.term_name} {termData.academic_year}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <StatsCard
+          title="Total Students"
+          value={dashboardStats.totalStudents}
+          description="Enrolled students"
+          icon={<GraduationCap className="h-6 w-6" />}
+          trend={{ value: 12, isPositive: true }}
+        />
+        <StatsCard
+          title="Staff Members"
+          value={dashboardStats.totalUsers}
+          description="Active users"
+          icon={<Users className="h-6 w-6" />}
+          trend={{ value: 8, isPositive: true }}
+        />
+        <StatsCard
+          title="Subjects"
+          value={dashboardStats.totalSubjects}
+          description="Available subjects"
+          icon={<BookOpen className="h-6 w-6" />}
+          trend={{ value: 3, isPositive: true }}
+        />
+        <StatsCard
+          title="Results Entered"
+          value={dashboardStats.totalResults}
+          description="This term"
+          icon={<FileText className="h-6 w-6" />}
+          trend={{ value: 25, isPositive: true }}
+        />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
           <CardHeader>
-            <CardTitle>System Overview</CardTitle>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest updates in your school management system</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Active Students</p>
-                  <p className="text-xs text-muted-foreground">{activeStudents} enrolled</p>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Results uploaded for Mathematics</p>
+                  <p className="text-xs text-gray-500">2 hours ago</p>
                 </div>
-                <span className="text-xs text-muted-foreground">Current</span>
               </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Teaching Staff</p>
-                  <p className="text-xs text-muted-foreground">{totalTeachers} members</p>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-600 rounded-full mr-3"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">New student registered</p>
+                  <p className="text-xs text-gray-500">5 hours ago</p>
                 </div>
-                <span className="text-xs text-muted-foreground">Active</span>
               </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Pending Approvals</p>
-                  <p className="text-xs text-muted-foreground">{pendingResults} results</p>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-600 rounded-full mr-3"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Report cards generated</p>
+                  <p className="text-xs text-gray-500">1 day ago</p>
                 </div>
-                <span className="text-xs text-muted-foreground">Waiting</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Scratch Cards</p>
-                  <p className="text-xs text-muted-foreground">{totalScratchCards} total cards</p>
-                </div>
-                <span className="text-xs text-muted-foreground">Generated</span>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        {/* Scratch Card Usage */}
-        <Card className="md:col-span-4">
+
+        <Card>
           <CardHeader>
-            <CardTitle>Scratch Card Analytics</CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks and shortcuts</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="chart">
-              <TabsList className="mb-4">
-                <TabsTrigger value="chart">Chart</TabsTrigger>
-                <TabsTrigger value="table">Table</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="chart" className="space-y-4">
-                <div className="h-[200px]">
-                  {totalScratchCards > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={scratchCardChartData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No scratch cards generated yet
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-between text-sm">
-                  <div>
-                    <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2" />
-                      <span>Used: {totalScratchCards > 0 ? Math.round((usedScratchCards / totalScratchCards) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-gray-300 mr-2" />
-                      <span>Unused: {totalScratchCards > 0 ? Math.round((unusedScratchCards / totalScratchCards) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="table">
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 text-sm font-medium">
-                    <div>Status</div>
-                    <div>Count</div>
-                    <div>Revenue</div>
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-3 text-sm">
-                    <div>Used</div>
-                    <div>{usedScratchCards}</div>
-                    <div>₦{totalRevenue.toLocaleString()}</div>
-                  </div>
-                  <div className="grid grid-cols-3 text-sm">
-                    <div>Unused</div>
-                    <div>{unusedScratchCards}</div>
-                    <div>₦0</div>
-                  </div>
-                  <div className="grid grid-cols-3 text-sm font-medium">
-                    <div>Total</div>
-                    <div>{totalScratchCards}</div>
-                    <div>₦{totalRevenue.toLocaleString()}</div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <FileText className="h-8 w-8 text-blue-600 mb-2" />
+                <p className="text-sm font-medium">Enter Results</p>
+              </div>
+              <div className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <Users className="h-8 w-8 text-green-600 mb-2" />
+                <p className="text-sm font-medium">Add Student</p>
+              </div>
+              <div className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <BookOpen className="h-8 w-8 text-purple-600 mb-2" />
+                <p className="text-sm font-medium">Manage Classes</p>
+              </div>
+              <div className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <GraduationCap className="h-8 w-8 text-orange-600 mb-2" />
+                <p className="text-sm font-medium">Generate Reports</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;

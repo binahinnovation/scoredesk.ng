@@ -10,6 +10,20 @@ export type SchoolData = {
   fullName: string;
 };
 
+// Email validation function
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Password strength validation
+const isStrongPassword = (password: string): boolean => {
+  return password.length >= 8 && 
+         /[A-Z]/.test(password) && 
+         /[a-z]/.test(password) && 
+         /\d/.test(password);
+};
+
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -63,22 +77,6 @@ export function useAuth() {
 
       if (error) {
         console.error('Error fetching user role:', error);
-        
-        // Check for super admin emails directly
-        const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-        
-        // Get user email from current user object
-        if (user?.email && superAdmins.includes(user.email)) {
-          setUserRole('Principal');
-          return;
-        }
-        
-        // Check for super admin flag in metadata
-        if (user?.user_metadata?.is_super_admin === true) {
-          setUserRole('Principal');
-          return;
-        }
-        
         setUserRole(null);
       } else if (data) {
         setUserRole(data as UserRole);
@@ -90,26 +88,45 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      // Special handling for super admin emails
-      const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-      if (superAdmins.includes(email)) {
-        // For demo purposes, we'll automatically assign the Principal role
-        // In a real application, you would validate this against a secure list
-        console.log('Logging in as super admin');
+      // Input validation
+      if (!isValidEmail(email)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Invalid email format" };
+      }
+
+      if (!password) {
+        toast({
+          title: "Missing Password",
+          description: "Please enter your password.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Password required" };
       }
       
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
+        let friendlyMessage = "Login failed. Please check your credentials.";
+        
+        if (error.message.includes("Invalid login credentials")) {
+          friendlyMessage = "Invalid email or password. Please try again.";
+        } else if (error.message.includes("Email not confirmed")) {
+          friendlyMessage = "Please check your email and confirm your account.";
+        }
+
         toast({
           title: "Login failed",
-          description: error.message,
+          description: friendlyMessage,
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: friendlyMessage };
       }
       
       toast({
@@ -120,53 +137,83 @@ export function useAuth() {
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "An unexpected error occurred",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: "Unexpected error occurred" };
     }
   };
 
   const signup = async (email: string, password: string, schoolData: SchoolData) => {
     try {
-      // Mark user as super admin if registering from /signup
-      let isSuperAdmin = window.location.pathname === '/signup';
+      // Enhanced input validation
+      if (!isValidEmail(email)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Invalid email format" };
+      }
+
+      if (!isStrongPassword(password)) {
+        toast({
+          title: "Weak Password",
+          description: "Password must be at least 8 characters with uppercase, lowercase, and numbers.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Password too weak" };
+      }
+
+      if (!schoolData.fullName.trim() || !schoolData.schoolName.trim()) {
+        toast({
+          title: "Missing Information",
+          description: "Please provide both your full name and school name.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Missing required information" };
+      }
       
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(),
         password,
         options: {
           data: {
-            full_name: schoolData.fullName,
-            school_name: schoolData.schoolName,
-            is_super_admin: isSuperAdmin, // Store this flag in user metadata
+            full_name: schoolData.fullName.trim(),
+            school_name: schoolData.schoolName.trim(),
           },
         },
       });
 
       if (error) {
+        let friendlyMessage = "Signup failed. Please try again.";
+        
+        if (error.message.includes("User already registered")) {
+          friendlyMessage = "An account with this email already exists. Please login instead.";
+        } else if (error.message.includes("Password")) {
+          friendlyMessage = "Password does not meet requirements.";
+        }
+
         toast({
           title: "Signup failed",
-          description: error.message,
+          description: friendlyMessage,
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: friendlyMessage };
       }
 
       toast({
         title: "Account created",
-        description: isSuperAdmin 
-          ? "Welcome to ScoreDesk! You have been granted Super Admin privileges."
-          : "Welcome to ScoreDesk!",
+        description: "Welcome to ScoreDesk! Please check your email for verification.",
       });
       return { success: true, data };
     } catch (error: any) {
       toast({
         title: "Signup failed",
-        description: error.message || "An unexpected error occurred",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: "Unexpected error occurred" };
     }
   };
 
@@ -177,10 +224,10 @@ export function useAuth() {
       if (error) {
         toast({
           title: "Logout failed",
-          description: error.message,
+          description: "Failed to logout. Please try again.",
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: "Logout failed" };
       }
       
       setUser(null);
@@ -194,10 +241,10 @@ export function useAuth() {
     } catch (error: any) {
       toast({
         title: "Logout failed",
-        description: error.message || "An unexpected error occurred",
+        description: "An unexpected error occurred during logout.",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: "Unexpected error occurred" };
     }
   };
 
