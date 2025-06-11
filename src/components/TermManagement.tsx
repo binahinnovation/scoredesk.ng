@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { Plus, Calendar, Archive } from "lucide-react";
-import { useUserRole } from '@/hooks/use-user-role';
+import { usePermission } from '@/hooks/use-permission';
 
 interface Term {
   id: string;
@@ -33,7 +32,7 @@ const TermManagement = () => {
     end_date: ''
   });
 
-  const { hasPermission } = useUserRole();
+  const { hasPermission } = usePermission();
   const queryClient = useQueryClient();
 
   // Fetch all terms
