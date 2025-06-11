@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/user';
 
@@ -28,7 +27,6 @@ export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state change listener
@@ -232,7 +230,6 @@ export function useAuth() {
       
       setUser(null);
       setUserRole(null);
-      navigate('/login');
       toast({
         title: "Logged out",
         description: "You've been successfully logged out",
