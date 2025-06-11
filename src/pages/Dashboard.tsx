@@ -126,28 +126,24 @@ const Dashboard = () => {
           value={dashboardStats.totalStudents}
           description="Enrolled students"
           icon={<GraduationCap className="h-6 w-6" />}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatsCard
           title="Staff Members"
           value={dashboardStats.totalUsers}
           description="Active users"
           icon={<Users className="h-6 w-6" />}
-          trend={{ value: 8, isPositive: true }}
         />
         <StatsCard
           title="Subjects"
           value={dashboardStats.totalSubjects}
           description="Available subjects"
           icon={<BookOpen className="h-6 w-6" />}
-          trend={{ value: 3, isPositive: true }}
         />
         <StatsCard
           title="Results Entered"
           value={dashboardStats.totalResults}
           description="This term"
           icon={<FileText className="h-6 w-6" />}
-          trend={{ value: 25, isPositive: true }}
         />
       </div>
 

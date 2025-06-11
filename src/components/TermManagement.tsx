@@ -1,16 +1,18 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Calendar, Clock, Archive, Settings2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast";
+import { Plus, Calendar, Archive } from "lucide-react";
+import { useUserRole } from '@/hooks/use-user-role';
 
 interface Term {
   id: string;
@@ -22,345 +24,322 @@ interface Term {
   created_at: string;
 }
 
-interface CurrentTermSetting {
-  term_id: string | null;
-  term_name: string;
-  academic_year: string;
-}
-
 const TermManagement = () => {
-  const [newTermName, setNewTermName] = useState('');
-  const [newAcademicYear, setNewAcademicYear] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    academic_year: '',
+    start_date: '',
+    end_date: ''
+  });
 
-  const { data: termsData, loading: termsLoading, refetch: refetchTerms } = useSupabaseQuery<Term[]>(
-    async () => {
+  const { hasPermission } = useUserRole();
+  const queryClient = useQueryClient();
+
+  // Fetch all terms
+  const { data: terms = [], isLoading } = useQuery({
+    queryKey: ['terms'],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('terms')
         .select('*')
         .order('created_at', { ascending: false });
-      return { data, error };
-    },
-    []
-  );
 
-  const { data: currentTermData, loading: settingsLoading, refetch: refetchSettings } = useSupabaseQuery<CurrentTermSetting>(
-    async () => {
+      if (error) throw error;
+      return data as Term[];
+    }
+  });
+
+  // Create term mutation
+  const createTermMutation = useMutation({
+    mutationFn: async (termData: typeof formData) => {
       const { data, error } = await supabase
-        .from('settings')
-        .select('setting_value')
-        .eq('setting_key', 'current_term')
-        .single();
-      
-      if (data && data.setting_value) {
-        // Type-safe parsing of the JSON setting value
-        const settingValue = data.setting_value as any;
-        if (typeof settingValue === 'object' && settingValue !== null) {
-          return { 
-            data: {
-              term_id: settingValue.term_id || null,
-              term_name: settingValue.term_name || 'First Term',
-              academic_year: settingValue.academic_year || '2024/2025'
-            } as CurrentTermSetting, 
-            error 
-          };
-        }
-      }
-      return { 
-        data: { 
-          term_id: null, 
-          term_name: 'First Term', 
-          academic_year: '2024/2025' 
-        } as CurrentTermSetting, 
-        error 
-      };
-    },
-    []
-  );
-
-  const terms = termsData || [];
-  const currentTerm = currentTermData || { term_id: null, term_name: 'First Term', academic_year: '2024/2025' };
-
-  const validateInput = (value: string, type: 'term' | 'year' | 'date') => {
-    if (!value.trim()) return false;
-    
-    if (type === 'year') {
-      const yearPattern = /^\d{4}\/\d{4}$/;
-      return yearPattern.test(value);
-    }
-    
-    if (type === 'date') {
-      const date = new Date(value);
-      return !isNaN(date.getTime());
-    }
-    
-    return true;
-  };
-
-  const createTerm = async () => {
-    // Input validation
-    if (!validateInput(newTermName, 'term') || 
-        !validateInput(newAcademicYear, 'year') || 
-        !validateInput(startDate, 'date') || 
-        !validateInput(endDate, 'date')) {
-      toast({
-        title: "Invalid Input",
-        description: "Please check all fields. Academic year should be in format YYYY/YYYY.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (new Date(startDate) >= new Date(endDate)) {
-      toast({
-        title: "Invalid Dates",
-        description: "Start date must be before end date.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
         .from('terms')
-        .insert({
-          name: newTermName.trim(),
-          academic_year: newAcademicYear.trim(),
-          start_date: startDate,
-          end_date: endDate,
-          is_current: false
-        });
+        .insert([termData])
+        .select()
+        .single();
 
       if (error) throw error;
-
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms'] });
+      toast({ title: "Term created successfully" });
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
       toast({
-        title: "Success",
-        description: "New term created successfully.",
-      });
-
-      setNewTermName('');
-      setNewAcademicYear('');
-      setStartDate('');
-      setEndDate('');
-      refetchTerms();
-    } catch (error: any) {
-      console.error("Error creating term:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create term. Please try again.",
-        variant: "destructive",
+        title: "Error creating term",
+        description: error.message,
+        variant: "destructive"
       });
     }
-  };
+  });
 
-  const setCurrentTerm = async (termId: string) => {
-    const selectedTerm = terms.find(t => t.id === termId);
-    if (!selectedTerm) return;
-
-    try {
-      // Archive current term data if switching terms
-      if (currentTerm.term_id && currentTerm.term_id !== termId) {
-        const { data: resultsCount } = await supabase
-          .from('results')
-          .select('id', { count: 'exact' })
-          .eq('term_id', currentTerm.term_id);
-
-        const { data: studentsCount } = await supabase
-          .from('students')
-          .select('id', { count: 'exact' });
-
-        await supabase
-          .from('term_archives')
-          .insert({
-            term_id: currentTerm.term_id,
-            academic_year: currentTerm.academic_year,
-            results_count: resultsCount?.length || 0,
-            students_count: studentsCount?.length || 0,
-          });
-      }
-
-      // Update current term setting
-      const { error } = await supabase
-        .from('settings')
-        .upsert({
-          setting_key: 'current_term',
-          setting_value: {
-            term_id: termId,
-            term_name: selectedTerm.name,
-            academic_year: selectedTerm.academic_year
-          }
-        });
-
-      if (error) throw error;
-
-      // Update the is_current flag in terms table
+  // Set current term mutation
+  const setCurrentTermMutation = useMutation({
+    mutationFn: async (termId: string) => {
+      // First, set all terms to not current
       await supabase
         .from('terms')
         .update({ is_current: false })
-        .neq('id', termId);
+        .neq('id', '');
 
-      await supabase
+      // Then set the selected term as current
+      const { error } = await supabase
         .from('terms')
         .update({ is_current: true })
         .eq('id', termId);
 
-      toast({
-        title: "Success",
-        description: `Current term set to ${selectedTerm.name} ${selectedTerm.academic_year}.`,
-      });
+      if (error) throw error;
 
-      refetchSettings();
-      refetchTerms();
-    } catch (error: any) {
-      console.error("Error setting current term:", error);
+      // Update the settings table
+      const term = terms.find(t => t.id === termId);
+      if (term) {
+        await supabase
+          .from('settings')
+          .upsert({
+            setting_key: 'current_term',
+            setting_value: {
+              term_name: term.name,
+              academic_year: term.academic_year,
+              term_id: termId
+            }
+          });
+      }
+
+      return termId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms'] });
+      toast({ title: "Current term updated successfully" });
+    },
+    onError: (error: any) => {
       toast({
-        title: "Error",
-        description: "Failed to set current term. Please try again.",
-        variant: "destructive",
+        title: "Error updating current term",
+        description: error.message,
+        variant: "destructive"
       });
+    }
+  });
+
+  // Archive term mutation
+  const archiveTermMutation = useMutation({
+    mutationFn: async (termId: string) => {
+      const term = terms.find(t => t.id === termId);
+      if (!term) throw new Error('Term not found');
+
+      // Get counts for archiving
+      const [studentsResult, resultsResult] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact' }),
+        supabase.from('results').select('id', { count: 'exact' }).eq('term_id', termId)
+      ]);
+
+      // Create archive record
+      const { error } = await supabase
+        .from('term_archives')
+        .insert({
+          term_id: termId,
+          academic_year: term.academic_year,
+          students_count: studentsResult.count || 0,
+          results_count: resultsResult.count || 0
+        });
+
+      if (error) throw error;
+      return termId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['terms'] });
+      toast({ title: "Term archived successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error archiving term",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      academic_year: '',
+      start_date: '',
+      end_date: ''
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createTermMutation.mutate(formData);
+  };
+
+  const handleSetCurrent = (termId: string) => {
+    setCurrentTermMutation.mutate(termId);
+  };
+
+  const handleArchive = (termId: string) => {
+    if (confirm('Are you sure you want to archive this term? This action cannot be undone.')) {
+      archiveTermMutation.mutate(termId);
     }
   };
 
-  if (termsLoading || settingsLoading) {
+  const canManageTerms = hasPermission('Term Management') || hasPermission('System Administration');
+
+  if (!canManageTerms) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-        <span className="ml-2">Loading term management...</span>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-gray-500">You don't have permission to manage terms.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Current Term Display */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Academic Terms</h2>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Term
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Academic Term</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Term Name *</Label>
+                <Select value={formData.name} onValueChange={(value) => setFormData({ ...formData, name: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="First Term">First Term</SelectItem>
+                    <SelectItem value="Second Term">Second Term</SelectItem>
+                    <SelectItem value="Third Term">Third Term</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="academic_year">Academic Year *</Label>
+                <Input
+                  id="academic_year"
+                  value={formData.academic_year}
+                  onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
+                  placeholder="e.g., 2024/2025"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="start_date">Start Date *</Label>
+                  <Input
+                    id="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end_date">End Date *</Label>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createTermMutation.isPending}>
+                  Create Term
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Clock className="h-5 w-5 mr-2" />
-            Current Academic Term
+            <Calendar className="h-5 w-5 mr-2" />
+            Academic Terms
           </CardTitle>
-          <CardDescription>
-            The active term for student results and assessments
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-blue-600">
-            {currentTerm.term_name} {currentTerm.academic_year}
-          </div>
-          {currentTerm.term_id && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Term ID: {currentTerm.term_id}
-            </p>
+          {isLoading ? (
+            <div className="text-center py-4">Loading terms...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Term</TableHead>
+                  <TableHead>Academic Year</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {terms.map((term) => (
+                  <TableRow key={term.id}>
+                    <TableCell className="font-medium">{term.name}</TableCell>
+                    <TableCell>{term.academic_year}</TableCell>
+                    <TableCell>
+                      {new Date(term.start_date).toLocaleDateString()} - {new Date(term.end_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {term.is_current ? (
+                        <Badge variant="default">Current</Badge>
+                      ) : (
+                        <Badge variant="secondary">Past</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {!term.is_current && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSetCurrent(term.id)}
+                            disabled={setCurrentTermMutation.isPending}
+                          >
+                            Set Current
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleArchive(term.id)}
+                          disabled={archiveTermMutation.isPending}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Create New Term */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Create New Term
-            </CardTitle>
-            <CardDescription>
-              Add a new academic term to the system
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="termName">Term Name</Label>
-              <Select value={newTermName} onValueChange={setNewTermName}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select term" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="First Term">First Term</SelectItem>
-                  <SelectItem value="Second Term">Second Term</SelectItem>
-                  <SelectItem value="Third Term">Third Term</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="academicYear">Academic Year (YYYY/YYYY)</Label>
-              <Input
-                id="academicYear"
-                placeholder="e.g., 2024/2025"
-                value={newAcademicYear}
-                onChange={(e) => setNewAcademicYear(e.target.value)}
-                pattern="\d{4}/\d{4}"
-              />
-            </div>
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            <Button onClick={createTerm} className="w-full">
-              Create Term
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Set Current Term */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Settings2 className="h-5 w-5 mr-2" />
-              Switch Current Term
-            </CardTitle>
-            <CardDescription>
-              Change the active term (archives current data)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {terms.map((term) => (
-                <div key={term.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">{term.name} {term.academic_year}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(term.start_date).toLocaleDateString()} - {new Date(term.end_date).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {term.is_current && <Badge variant="default">Current</Badge>}
-                    {!term.is_current && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentTerm(term.id)}
-                      >
-                        Set as Current
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {terms.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">
-                  No terms created yet. Create your first term to get started.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
