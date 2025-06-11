@@ -33,6 +33,7 @@ import MonnifyStatusPage from "./pages/monnify/MonnifyStatusPage";
 import IceDataPage from "./pages/icedata/IceDataPage";
 import ProfileSettings from "./pages/ProfileSettings";
 import { LoadingSpinner } from "./components/LoadingSpinner";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -59,27 +60,129 @@ function AppContent() {
       {user ? (
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="students" element={<StudentManagement />} />
+          
+          <Route path="students" element={
+            <ProtectedRoute permission="Student Management">
+              <StudentManagement />
+            </ProtectedRoute>
+          } />
+          
           <Route path="student-portal" element={<StudentResultPortal />} />
-          <Route path="classes" element={<ClassSubjectManagement />} />
-          <Route path="results" element={<ResultEntry />} />
-          <Route path="approval" element={<ResultApproval />} />
-          <Route path="ranking" element={<ClassRanking />} />
-          <Route path="reportcards" element={<ReportCardDesigner />} />
-          <Route path="scratchcards" element={<ScratchCards />} />
-          <Route path="user-management" element={<UserManagement />} />
-          <Route path="users" element={<ManageUsers />} />
-          <Route path="create-login" element={<CreateLoginDetails />} />
-          <Route path="permissions" element={<RolePermissions />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="terms" element={<TermManagementPage />} />
-          <Route path="branding" element={<SchoolBranding />} />
-          <Route path="analytics" element={<AnalyticsDashboard />} />
-          <Route path="wallet" element={<WalletPage />} />
-          <Route path="transactions" element={<TransactionsPage />} />
-          <Route path="settlements" element={<SettlementsPage />} />
-          <Route path="monnify" element={<MonnifyStatusPage />} />
-          <Route path="icedata" element={<IceDataPage />} />
+          
+          <Route path="classes" element={
+            <ProtectedRoute permission="Class/Subject Setup">
+              <ClassSubjectManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="results" element={
+            <ProtectedRoute permission="Result Upload">
+              <ResultEntry />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="approval" element={
+            <ProtectedRoute permission="Result Approval">
+              <ResultApproval />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="ranking" element={
+            <ProtectedRoute permission="Position & Ranking">
+              <ClassRanking />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="reportcards" element={
+            <ProtectedRoute permission="Report Card Designer">
+              <ReportCardDesigner />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="scratchcards" element={
+            <ProtectedRoute permission="Scratch Card Generator">
+              <ScratchCards />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="user-management" element={
+            <ProtectedRoute permission="User Management">
+              <UserManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="users" element={
+            <ProtectedRoute adminOnly>
+              <ManageUsers />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="create-login" element={
+            <ProtectedRoute adminOnly>
+              <CreateLoginDetails />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="permissions" element={
+            <ProtectedRoute adminOnly>
+              <RolePermissions />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="settings" element={
+            <ProtectedRoute permission="Settings">
+              <SettingsPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="terms" element={
+            <ProtectedRoute adminOnly>
+              <TermManagementPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="branding" element={
+            <ProtectedRoute permission="School Branding">
+              <SchoolBranding />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="analytics" element={
+            <ProtectedRoute permission="Analytics Dashboard">
+              <AnalyticsDashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="wallet" element={
+            <ProtectedRoute adminOnly>
+              <WalletPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="transactions" element={
+            <ProtectedRoute adminOnly>
+              <TransactionsPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="settlements" element={
+            <ProtectedRoute adminOnly>
+              <SettlementsPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="monnify" element={
+            <ProtectedRoute adminOnly>
+              <MonnifyStatusPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="icedata" element={
+            <ProtectedRoute adminOnly>
+              <IceDataPage />
+            </ProtectedRoute>
+          } />
+          
           <Route path="profile" element={<ProfileSettings />} />
         </Route>
       ) : (
