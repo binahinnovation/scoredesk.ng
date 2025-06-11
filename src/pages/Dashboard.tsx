@@ -20,49 +20,66 @@ interface CurrentTermData {
 }
 
 const Dashboard = () => {
-  // Fetch dashboard statistics
-  const { data: stats, loading: statsLoading } = useSupabaseQuery<DashboardStats>(
+  // Fetch dashboard statistics with error handling
+  const { data: stats, loading: statsLoading, error: statsError } = useSupabaseQuery<DashboardStats>(
     async () => {
-      const [studentsResult, usersResult, subjectsResult, resultsResult] = await Promise.all([
-        supabase.from('students').select('id', { count: 'exact' }),
-        supabase.from('profiles').select('id', { count: 'exact' }),
-        supabase.from('subjects').select('id', { count: 'exact' }),
-        supabase.from('results').select('id', { count: 'exact' })
-      ]);
+      try {
+        const [studentsResult, usersResult, subjectsResult, resultsResult] = await Promise.all([
+          supabase.from('students').select('id', { count: 'exact' }),
+          supabase.from('profiles').select('id', { count: 'exact' }),
+          supabase.from('subjects').select('id', { count: 'exact' }),
+          supabase.from('results').select('id', { count: 'exact' })
+        ]);
 
-      return {
-        data: {
-          totalStudents: studentsResult.count || 0,
-          totalUsers: usersResult.count || 0,
-          totalSubjects: subjectsResult.count || 0,
-          totalResults: resultsResult.count || 0
-        },
-        error: null
-      };
+        return {
+          data: {
+            totalStudents: studentsResult.count || 0,
+            totalUsers: usersResult.count || 0,
+            totalSubjects: subjectsResult.count || 0,
+            totalResults: resultsResult.count || 0
+          },
+          error: null
+        };
+      } catch (error) {
+        console.error('Dashboard stats error:', error);
+        return {
+          data: {
+            totalStudents: 0,
+            totalUsers: 0,
+            totalSubjects: 0,
+            totalResults: 0
+          },
+          error: null
+        };
+      }
     },
     []
   );
 
-  // Fetch current term information
+  // Fetch current term information with error handling
   const { data: currentTerm, loading: termLoading } = useSupabaseQuery<CurrentTermData>(
     async () => {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('setting_value')
-        .eq('setting_key', 'current_term')
-        .single();
-      
-      if (data && data.setting_value) {
-        const settingValue = data.setting_value as any;
-        if (typeof settingValue === 'object' && settingValue !== null) {
-          return { 
-            data: {
-              term_name: settingValue.term_name || 'First Term',
-              academic_year: settingValue.academic_year || '2024/2025'
-            },
-            error 
-          };
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('setting_value')
+          .eq('setting_key', 'current_term')
+          .single();
+        
+        if (data && data.setting_value) {
+          const settingValue = data.setting_value as any;
+          if (typeof settingValue === 'object' && settingValue !== null) {
+            return { 
+              data: {
+                term_name: settingValue.term_name || 'First Term',
+                academic_year: settingValue.academic_year || '2024/2025'
+              },
+              error 
+            };
+          }
         }
+      } catch (error) {
+        console.error('Term data error:', error);
       }
       
       return { 
@@ -70,13 +87,14 @@ const Dashboard = () => {
           term_name: 'First Term', 
           academic_year: '2024/2025' 
         },
-        error 
+        error: null
       };
     },
     []
   );
 
-  if (statsLoading || termLoading) {
+  // Show loading only for a brief moment
+  if (statsLoading && termLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />

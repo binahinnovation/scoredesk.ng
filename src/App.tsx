@@ -21,6 +21,7 @@ import ScratchCards from "./pages/scratchcards/ScratchCards";
 import UserManagement from "./pages/users/UserManagement";
 import ManageUsers from "./pages/users/ManageUsers";
 import CreateLoginDetails from "./pages/users/CreateLoginDetails";
+import CreateAdmin from "./pages/users/CreateAdmin";
 import RolePermissions from "./pages/users/RolePermissions";
 import SettingsPage from "./pages/settings/SettingsPage";
 import TermManagementPage from "./pages/settings/TermManagement";
@@ -120,6 +121,12 @@ function AppContent() {
           <Route path="create-login" element={
             <ProtectedRoute adminOnly>
               <CreateLoginDetails />
+            </ProtectedRoute>
+          } />
+
+          <Route path="create-admin" element={
+            <ProtectedRoute adminOnly>
+              <CreateAdmin />
             </ProtectedRoute>
           } />
           
