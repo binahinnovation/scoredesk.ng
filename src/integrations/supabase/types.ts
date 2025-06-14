@@ -632,6 +632,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      is_principal: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       use_scratch_card_for_results: {
         Args: { p_pin: string; p_student_id: string; p_term_id: string }
         Returns: Json

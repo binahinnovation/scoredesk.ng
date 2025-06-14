@@ -36,25 +36,22 @@ export default function AnalyticsDashboard() {
   const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
   useEffect(() => {
-    const canViewAnalytics = hasPermission("Analytics");
-    console.log("AnalyticsDashboard useEffect triggered. HasPermission for Analytics:", canViewAnalytics, "SelectedTerm:", selectedTerm, "UserRoleLoading:", userRoleLoading);
+    const canViewAnalytics = hasPermission("Analytics Dashboard");
+    if (userRoleLoading) {
+      // Still waiting for user role to be determined
+      return;
+    }
+    
     if (canViewAnalytics) {
       fetchAnalytics();
     } else {
-      // If permission is lost or not available, ensure loadingData is false if not already loading user data.
-      if (!userRoleLoading) { 
-         setLoadingData(false);
-         console.log("No permission for Analytics or user role still loading, setting loadingData to false if user role check complete.");
-      }
+      setLoadingData(false);
     }
-  }, [hasPermission, selectedTerm, userRoleLoading]); // Added userRoleLoading from useUserRole to dependencies
+  }, [hasPermission, selectedTerm, userRoleLoading]);
 
   const fetchAnalytics = async () => {
-    console.log("fetchAnalytics called. Current loadingData before set:", loadingData, "selectedTerm:", selectedTerm);
     setLoadingData(true);
-    console.log("setLoadingData(true) called. loadingData should be true now.");
     try {
-      console.log("Starting data fetch...");
       // Fetch basic counts
       const [studentsResult, teachersResult, subjectsResult, classesResult, termsResult] = await Promise.all([
         supabase.from("students").select("id", { count: "exact" }),
@@ -63,11 +60,10 @@ export default function AnalyticsDashboard() {
         supabase.from("classes").select("id", { count: "exact" }),
         supabase.from("terms").select("*").order("created_at", { ascending: false })
       ]);
-      console.log("Basic counts fetched:", { studentsResult, teachersResult, subjectsResult, classesResult, termsResult });
-      if (teachersResult.error) {
-        console.error("Error fetching teachers (user_roles):", teachersResult.error);
-      }
 
+      if (teachersResult.error) {
+        console.error("Error fetching teachers count:", teachersResult.error);
+      }
 
       // Fetch results for analytics
       let resultsQuery = supabase
@@ -86,24 +82,19 @@ export default function AnalyticsDashboard() {
       }
 
       const resultsResult = await resultsQuery;
-      console.log("Raw results from Supabase (resultsResult):", JSON.stringify(resultsResult, null, 2)); // Added pretty print
 
       if (resultsResult.error) {
-          console.error("Error in resultsResult from Supabase:", resultsResult.error);
+          console.error("Error fetching results for analytics:", resultsResult.error);
       }
 
       // Process data for charts
-      console.log("Processing data for charts with resultsResult.data:", resultsResult.data);
       const classPerformanceData = processClassPerformance(resultsResult.data || []);
-      console.log("Processed classPerformanceData:", JSON.stringify(classPerformanceData, null, 2)); // Added pretty print
       const subjectPerformanceData = processSubjectPerformance(resultsResult.data || []);
-      console.log("Processed subjectPerformanceData:", JSON.stringify(subjectPerformanceData, null, 2)); // Added pretty print
       const processedResultsAnalytics = processResultsAnalytics(resultsResult.data || []);
-      console.log("Processed resultsAnalytics (processedResultsAnalytics):", JSON.stringify(processedResultsAnalytics, null, 2)); // Added pretty print
 
       setAnalytics({
         totalStudents: studentsResult.count || 0,
-        totalTeachers: teachersResult.count || 0, // This will likely be 0 if the query fails
+        totalTeachers: teachersResult.count || 0,
         totalSubjects: subjectsResult.count || 0,
         totalClasses: classesResult.count || 0,
         resultsAnalytics: processedResultsAnalytics,
@@ -111,22 +102,17 @@ export default function AnalyticsDashboard() {
         subjectPerformance: subjectPerformanceData,
         termComparison: [] 
       });
-      console.log("setAnalytics called with new data. Total Teachers:", teachersResult.count || 0);
 
       setTerms(termsResult.data || []);
-      console.log("setTerms called.");
 
     } catch (error) {
-      console.error("Error fetching analytics in CATCH block:", error);
+      console.error("Error fetching analytics data:", error);
     } finally {
-      console.log("FINALLY block reached. Setting loadingData to false.");
       setLoadingData(false);
-      console.log("setLoadingData(false) called. loadingData should be false now.");
     }
   };
 
   const processClassPerformance = (results: any[]) => {
-    console.log("processClassPerformance called with results:", results.length);
     const classStats = new Map();
     
     results.forEach(result => {
@@ -164,12 +150,10 @@ export default function AnalyticsDashboard() {
       average: stats.scores.length > 0 ? stats.scores.reduce((sum: number, score: number) => sum + score, 0) / stats.scores.length : 0,
       count: stats.count
     })).sort((a, b) => b.average - a.average);
-    console.log("processClassPerformance returning:", performanceData);
     return performanceData;
   };
 
   const processSubjectPerformance = (results: any[]) => {
-    console.log("processSubjectPerformance called with results:", results.length);
     const subjectStats = new Map();
     
     results.forEach(result => {
@@ -207,12 +191,10 @@ export default function AnalyticsDashboard() {
       average: stats.scores.length > 0 ? stats.scores.reduce((sum: number, score: number) => sum + score, 0) / stats.scores.length : 0,
       count: stats.count
     })).sort((a, b) => b.average - a.average);
-    console.log("processSubjectPerformance returning:", performanceData);
     return performanceData;
   };
 
   const processResultsAnalytics = (results: any[]) => {
-    console.log("processResultsAnalytics called with results:", results.length);
     const gradeRanges = [
       { name: "A (90-100%)", min: 90, max: 100, count: 0 },
       { name: "B (80-89%)", min: 80, max: 89, count: 0 },
@@ -250,7 +232,6 @@ export default function AnalyticsDashboard() {
       }
     });
     const analyticsData = gradeRanges.filter(range => range.count > 0);
-    console.log("processResultsAnalytics returning:", analyticsData);
     return analyticsData;
   };
 
@@ -258,8 +239,7 @@ export default function AnalyticsDashboard() {
     return <div className="flex items-center justify-center h-64">Loading user data...</div>;
   }
 
-  if (!hasPermission("Analytics")) {
-    console.log("Rendering Access Restricted view because hasPermission('Analytics') is false.");
+  if (!hasPermission("Analytics Dashboard")) {
     return (
       <div className="flex flex-col gap-6 p-4 md:p-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
@@ -277,8 +257,6 @@ export default function AnalyticsDashboard() {
     );
   }
   
-  console.log("Rendering charts. loadingData:", loadingData, "analytics:", JSON.stringify(analytics, null, 2)); // Added pretty print
-
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       
