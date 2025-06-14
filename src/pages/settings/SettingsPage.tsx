@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Save, User, Mail, School, Calendar, Settings, Shield, Palette, Database, FileText, Clock, Download } from "lucide-react";
+import { Save, User, Mail, School, Calendar, Settings, Shield, Palette, Database, FileText, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -31,7 +32,6 @@ export default function SettingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [backingUp, setBackingUp] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -130,55 +130,6 @@ export default function SettingsPage() {
         description: error.message || "Failed to send reset email",
         variant: "destructive",
       });
-    }
-  };
-
-  const handleBackup = async () => {
-    setBackingUp(true);
-    try {
-      // Get all data for backup
-      const [students, classes, subjects, results, users] = await Promise.all([
-        supabase.from('students').select('*'),
-        supabase.from('classes').select('*'),
-        supabase.from('subjects').select('*'),
-        supabase.from('results').select('*'),
-        supabase.from('profiles').select('*')
-      ]);
-
-      const backupData = {
-        timestamp: new Date().toISOString(),
-        data: {
-          students: students.data || [],
-          classes: classes.data || [],
-          subjects: subjects.data || [],
-          results: results.data || [],
-          users: users.data || []
-        }
-      };
-
-      // Create and download backup file
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `scoredesk_backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Backup Complete",
-        description: "Your data has been backed up successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Backup Failed",
-        description: "Failed to create backup. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setBackingUp(false);
     }
   };
 
@@ -286,7 +237,7 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      {/* System Settings */}
+      {/* Settings Categories */}
       <Card>
         <CardHeader>
           <CardTitle>System Settings</CardTitle>
@@ -323,11 +274,9 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               className="flex flex-col items-center justify-center h-24 space-y-2"
-              onClick={handleBackup}
-              disabled={backingUp}
             >
               <Database className="h-6 w-6" />
-              <span>{backingUp ? 'Backing up...' : 'Data Backup'}</span>
+              <span>Data Backup</span>
             </Button>
             
             <Button

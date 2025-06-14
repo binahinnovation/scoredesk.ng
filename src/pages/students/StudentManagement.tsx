@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,19 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
-import { StudentFilters } from '@/components/students/StudentFilters';
-import { useStudentExport } from '@/hooks/useStudentExport';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
 interface Student {
   id: string;
@@ -51,13 +40,8 @@ interface Class {
   description?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
-
 export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({
@@ -79,7 +63,6 @@ export default function StudentManagement() {
 
   const { hasPermission } = useUserRole();
   const queryClient = useQueryClient();
-  const { exportToPDF, exportToExcel } = useStudentExport();
 
   // Fetch students with class information
   const { data: students = [], isLoading } = useQuery({
@@ -113,21 +96,6 @@ export default function StudentManagement() {
       return data as Class[];
     }
   });
-
-  // Filter students based on search term, class, and status
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.student_id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || student.class_id === selectedClass;
-    const matchesStatus = selectedStatus === 'all' || student.status === selectedStatus;
-    
-    return matchesSearch && matchesClass && matchesStatus;
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // Create student mutation
   const createStudentMutation = useMutation({
@@ -268,15 +236,10 @@ export default function StudentManagement() {
     }
   };
 
-  const handleExportPDF = () => {
-    const className = selectedClass !== 'all' ? classes.find(c => c.id === selectedClass)?.name : undefined;
-    exportToPDF(filteredStudents, className);
-  };
-
-  const handleExportExcel = () => {
-    const className = selectedClass !== 'all' ? classes.find(c => c.id === selectedClass)?.name : undefined;
-    exportToExcel(filteredStudents, className);
-  };
+  const filteredStudents = students.filter(student =>
+    `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.student_id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -289,11 +252,6 @@ export default function StudentManagement() {
   };
 
   const canManageStudents = hasPermission('Student Management');
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedClass, selectedStatus]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -314,7 +272,6 @@ export default function StudentManagement() {
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="first_name">First Name *</Label>
@@ -484,123 +441,76 @@ export default function StudentManagement() {
         )}
       </div>
 
-      <StudentFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        selectedClass={selectedClass}
-        onClassChange={setSelectedClass}
-        selectedStatus={selectedStatus}
-        onStatusChange={setSelectedStatus}
-        classes={classes}
-        onExportPDF={handleExportPDF}
-        onExportExcel={handleExportExcel}
-        totalStudents={filteredStudents.length}
-      />
-
       <Card>
         <CardHeader>
-          <CardTitle>Students</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Students</CardTitle>
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-500" />
+              <Input
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4">Loading students...</div>
           ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Gender</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Contact</TableHead>
-                    {canManageStudents && <TableHead>Actions</TableHead>}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Contact</TableHead>
+                  {canManageStudents && <TableHead>Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">{student.student_id}</TableCell>
+                    <TableCell>
+                      {`${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`}
+                    </TableCell>
+                    <TableCell>{student.classes?.name || 'No Class'}</TableCell>
+                    <TableCell>{student.gender || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(student.status)}>
+                        {student.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{student.email || student.phone || 'N/A'}</TableCell>
+                    {canManageStudents && (
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditDialog(student)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(student.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">{student.student_id}</TableCell>
-                      <TableCell>
-                        {`${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`}
-                      </TableCell>
-                      <TableCell>{student.classes?.name || 'No Class'}</TableCell>
-                      <TableCell>{student.gender || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(student.status)}>
-                          {student.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{student.email || student.phone || 'N/A'}</TableCell>
-                      {canManageStudents && (
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openEditDialog(student)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDelete(student.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {totalPages > 1 && (
-                <div className="mt-4">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                      
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const page = i + 1;
-                        return (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(page)}
-                              isActive={currentPage === page}
-                              className="cursor-pointer"
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      })}
-                      
-                      {totalPages > 5 && (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      )}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
