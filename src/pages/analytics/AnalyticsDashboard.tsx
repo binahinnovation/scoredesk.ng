@@ -18,7 +18,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsDashboard() {
-  const { userRole, loading, hasPermission } = useUserRole();
+  const { userRole, loading: userRoleLoading, hasPermission } = useUserRole(); // Renamed loading to avoid conflict
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalStudents: 0,
     totalTeachers: 0,
@@ -31,22 +31,23 @@ export default function AnalyticsDashboard() {
   });
   const [selectedTerm, setSelectedTerm] = useState<string>("all");
   const [terms, setTerms] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(true); // Initial state is true
+  const [loadingData, setLoadingData] = useState(true);
 
   const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
   useEffect(() => {
-    console.log("AnalyticsDashboard useEffect triggered. HasPermission:", hasPermission, "SelectedTerm:", selectedTerm);
-    if (hasPermission("Analytics")) {
+    const canViewAnalytics = hasPermission("Analytics");
+    console.log("AnalyticsDashboard useEffect triggered. HasPermission for Analytics:", canViewAnalytics, "SelectedTerm:", selectedTerm, "UserRoleLoading:", userRoleLoading);
+    if (canViewAnalytics) {
       fetchAnalytics();
     } else {
       // If permission is lost or not available, ensure loadingData is false if not already loading user data.
-      if (!loading) { // 'loading' here is from useUserRole
+      if (!userRoleLoading) { 
          setLoadingData(false);
-         console.log("No permission for Analytics, setting loadingData to false.");
+         console.log("No permission for Analytics or user role still loading, setting loadingData to false if user role check complete.");
       }
     }
-  }, [hasPermission, selectedTerm, loading]); // Added loading from useUserRole to dependencies
+  }, [hasPermission, selectedTerm, userRoleLoading]); // Added userRoleLoading from useUserRole to dependencies
 
   const fetchAnalytics = async () => {
     console.log("fetchAnalytics called. Current loadingData before set:", loadingData, "selectedTerm:", selectedTerm);
@@ -57,12 +58,16 @@ export default function AnalyticsDashboard() {
       // Fetch basic counts
       const [studentsResult, teachersResult, subjectsResult, classesResult, termsResult] = await Promise.all([
         supabase.from("students").select("id", { count: "exact" }),
-        supabase.from("user_roles").select("id", { count: "exact" }).neq("role", "Principal"), // Consider if 'Principal' should be excluded or if it's specific to 'teachers' count
+        supabase.from("user_roles").select("id", { count: "exact" }).neq("role", "Principal"),
         supabase.from("subjects").select("id", { count: "exact" }),
         supabase.from("classes").select("id", { count: "exact" }),
         supabase.from("terms").select("*").order("created_at", { ascending: false })
       ]);
       console.log("Basic counts fetched:", { studentsResult, teachersResult, subjectsResult, classesResult, termsResult });
+      if (teachersResult.error) {
+        console.error("Error fetching teachers (user_roles):", teachersResult.error);
+      }
+
 
       // Fetch results for analytics
       let resultsQuery = supabase
@@ -81,7 +86,7 @@ export default function AnalyticsDashboard() {
       }
 
       const resultsResult = await resultsQuery;
-      console.log("Raw results from Supabase (resultsResult):", JSON.stringify(resultsResult));
+      console.log("Raw results from Supabase (resultsResult):", JSON.stringify(resultsResult, null, 2)); // Added pretty print
 
       if (resultsResult.error) {
           console.error("Error in resultsResult from Supabase:", resultsResult.error);
@@ -90,30 +95,29 @@ export default function AnalyticsDashboard() {
       // Process data for charts
       console.log("Processing data for charts with resultsResult.data:", resultsResult.data);
       const classPerformanceData = processClassPerformance(resultsResult.data || []);
-      console.log("Processed classPerformanceData:", JSON.stringify(classPerformanceData));
+      console.log("Processed classPerformanceData:", JSON.stringify(classPerformanceData, null, 2)); // Added pretty print
       const subjectPerformanceData = processSubjectPerformance(resultsResult.data || []);
-      console.log("Processed subjectPerformanceData:", JSON.stringify(subjectPerformanceData));
+      console.log("Processed subjectPerformanceData:", JSON.stringify(subjectPerformanceData, null, 2)); // Added pretty print
       const processedResultsAnalytics = processResultsAnalytics(resultsResult.data || []);
-      console.log("Processed resultsAnalytics (processedResultsAnalytics):", JSON.stringify(processedResultsAnalytics));
+      console.log("Processed resultsAnalytics (processedResultsAnalytics):", JSON.stringify(processedResultsAnalytics, null, 2)); // Added pretty print
 
-      setAnalytics({ // Removed functional update for now, direct set to ensure counts are included
+      setAnalytics({
         totalStudents: studentsResult.count || 0,
-        totalTeachers: teachersResult.count || 0,
+        totalTeachers: teachersResult.count || 0, // This will likely be 0 if the query fails
         totalSubjects: subjectsResult.count || 0,
         totalClasses: classesResult.count || 0,
         resultsAnalytics: processedResultsAnalytics,
         classPerformance: classPerformanceData,
         subjectPerformance: subjectPerformanceData,
-        termComparison: [] // This remains as is
+        termComparison: [] 
       });
-      console.log("setAnalytics called with new data.");
+      console.log("setAnalytics called with new data. Total Teachers:", teachersResult.count || 0);
 
       setTerms(termsResult.data || []);
       console.log("setTerms called.");
 
     } catch (error) {
       console.error("Error fetching analytics in CATCH block:", error);
-      // Ensure UI reflects error state if needed, for now, just log
     } finally {
       console.log("FINALLY block reached. Setting loadingData to false.");
       setLoadingData(false);
@@ -130,9 +134,21 @@ export default function AnalyticsDashboard() {
         // console.log("Skipping result in processClassPerformance due to missing data:", result);
         return;
       }
+      // Ensure is_approved is true if it exists, otherwise assume true if not present
+      if (result.is_approved === false) {
+        // console.log("Skipping non-approved result in processClassPerformance:", result);
+        return;
+      }
       
       const className = result.students.classes.name;
-      const percentage = (result.score / result.assessments.max_score) * 100;
+      const score = Number(result.score);
+      const maxScore = Number(result.assessments.max_score);
+      
+      if (isNaN(score) || isNaN(maxScore) || maxScore === 0) {
+        // console.log("Skipping result with invalid score/maxScore in processClassPerformance:", result);
+        return;
+      }
+      const percentage = (score / maxScore) * 100;
       
       if (!classStats.has(className)) {
         classStats.set(className, { scores: [], count: 0 });
@@ -161,9 +177,21 @@ export default function AnalyticsDashboard() {
         // console.log("Skipping result in processSubjectPerformance due to missing data:", result);
         return;
       }
+      // Ensure is_approved is true if it exists, otherwise assume true if not present
+      if (result.is_approved === false) {
+        // console.log("Skipping non-approved result in processSubjectPerformance:", result);
+        return;
+      }
       
       const subjectName = result.subjects.name;
-      const percentage = (result.score / result.assessments.max_score) * 100;
+      const score = Number(result.score);
+      const maxScore = Number(result.assessments.max_score);
+
+      if (isNaN(score) || isNaN(maxScore) || maxScore === 0) {
+        // console.log("Skipping result with invalid score/maxScore in processSubjectPerformance:", result);
+        return;
+      }
+      const percentage = (score / maxScore) * 100;
       
       if (!subjectStats.has(subjectName)) {
         subjectStats.set(subjectName, { scores: [], count: 0 });
@@ -194,14 +222,25 @@ export default function AnalyticsDashboard() {
       { name: "F (0-49%)", min: 0, max: 49, count: 0 }
     ];
 
-    
     results.forEach(result => {
       if (!result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) {
         // console.log("Skipping result in processResultsAnalytics due to missing data:", result);
         return;
       }
-      
-      const percentage = (result.score / result.assessments.max_score) * 100;
+      // Ensure is_approved is true if it exists, otherwise assume true if not present
+      if (result.is_approved === false) {
+        // console.log("Skipping non-approved result in processResultsAnalytics:", result);
+        return;
+      }
+
+      const score = Number(result.score);
+      const maxScore = Number(result.assessments.max_score);
+
+      if (isNaN(score) || isNaN(maxScore) || maxScore === 0) {
+        // console.log("Skipping result with invalid score/maxScore in processResultsAnalytics:", result);
+        return;
+      }
+      const percentage = (score / maxScore) * 100;
       
       for (const range of gradeRanges) {
         if (percentage >= range.min && percentage <= range.max) {
@@ -215,12 +254,12 @@ export default function AnalyticsDashboard() {
     return analyticsData;
   };
 
-  if (loading) { // This 'loading' is from useUserRole
+  if (userRoleLoading) {
     return <div className="flex items-center justify-center h-64">Loading user data...</div>;
   }
 
   if (!hasPermission("Analytics")) {
-    
+    console.log("Rendering Access Restricted view because hasPermission('Analytics') is false.");
     return (
       <div className="flex flex-col gap-6 p-4 md:p-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
@@ -238,8 +277,7 @@ export default function AnalyticsDashboard() {
     );
   }
   
-  // Added a log here to see the state of loadingData just before rendering charts
-  console.log("Rendering charts. loadingData:", loadingData, "analytics:", analytics);
+  console.log("Rendering charts. loadingData:", loadingData, "analytics:", JSON.stringify(analytics, null, 2)); // Added pretty print
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
