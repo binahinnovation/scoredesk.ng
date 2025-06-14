@@ -624,6 +624,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_super_admin: {
+        Args: { admin_email: string; admin_password: string }
+        Returns: Json
+      }
       get_user_role: {
         Args: { user_id_param: string }
         Returns: string

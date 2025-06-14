@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,8 +53,16 @@ const TermManagement = () => {
         .eq('setting_key', 'current_term')
         .single();
       
-      if (data) {
-        return { data: data.setting_value as CurrentTermSetting, error };
+      if (data && typeof data.setting_value === 'object' && data.setting_value !== null) {
+        const settingValue = data.setting_value as any;
+        return { 
+          data: {
+            term_id: settingValue.term_id || null,
+            term_name: settingValue.term_name || 'First Term',
+            academic_year: settingValue.academic_year || '2024/2025'
+          } as CurrentTermSetting, 
+          error 
+        };
       }
       return { data: null, error };
     },
@@ -113,7 +120,6 @@ const TermManagement = () => {
     if (!selectedTerm) return;
 
     try {
-      // Archive current term data if switching terms
       if (currentTerm.term_id && currentTerm.term_id !== termId) {
         const { data: resultsCount } = await supabase
           .from('results')
@@ -134,7 +140,6 @@ const TermManagement = () => {
           });
       }
 
-      // Update current term setting
       const { error } = await supabase
         .from('settings')
         .upsert({
@@ -148,7 +153,6 @@ const TermManagement = () => {
 
       if (error) throw error;
 
-      // Update the is_current flag in terms table
       await supabase
         .from('terms')
         .update({ is_current: false })
@@ -187,7 +191,6 @@ const TermManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Current Term Display */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -211,7 +214,6 @@ const TermManagement = () => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Create New Term */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -269,7 +271,6 @@ const TermManagement = () => {
           </CardContent>
         </Card>
 
-        {/* Set Current Term */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

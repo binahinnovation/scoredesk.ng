@@ -1,92 +1,144 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserRound, BookOpen, GraduationCap, Clock } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
-import { supabase } from "@/integrations/supabase/client";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/use-auth';
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
+import { supabase } from '@/integrations/supabase/client';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  FileText,
+  TrendingUp,
+  Calendar,
+  User,
+  UserPlus
+} from 'lucide-react';
 
-export default function Dashboard() {
-  // Fetch real data using our custom hook
-  const { data: studentsData, loading: studentsLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('students').select('id, status');
-      return { data, error };
-    },
-    []
-  );
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { user, userRole } = useAuth();
 
-  const { data: userRolesData, loading: userRolesLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('user_roles').select('id, role');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: resultsData, loading: resultsLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('results').select('id, is_approved');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: scratchCardsData, loading: scratchCardsLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase.from('scratch_cards').select('id, status, revenue_generated, price');
-      return { data, error };
-    },
-    []
-  );
-
-  const { data: currentTermData, loading: currentTermLoading } = useSupabaseQuery(
+  // Get current term data
+  const { data: currentTermData, loading: termLoading } = useSupabaseQuery(
     async () => {
       const { data, error } = await supabase
         .from('settings')
         .select('setting_value')
         .eq('setting_key', 'current_term')
         .single();
-      
-      if (data) {
-        return { data: data.setting_value, error };
-      }
-      return { data: null, error };
+      return { data, error };
     },
     []
   );
 
-  // Calculate statistics from real data
-  const totalStudents = studentsData?.length || 0;
-  const activeStudents = studentsData?.filter(s => s.status === 'Active').length || 0;
-  
-  const totalTeachers = userRolesData?.filter(u => 
-    u.role === 'Subject Teacher' || u.role === 'Form Master' || u.role === 'Exam Officer'
-  ).length || 0;
-  
-  const pendingResults = resultsData?.filter(r => !r.is_approved).length || 0;
-  
-  const usedScratchCards = scratchCardsData?.filter(s => s.status === 'Used').length || 0;
-  const totalScratchCards = scratchCardsData?.length || 0;
-  const unusedScratchCards = totalScratchCards - usedScratchCards;
-  const totalRevenue = scratchCardsData?.reduce((sum, card) => sum + (card.revenue_generated || 0), 0) || 0;
+  // Parse current term data safely
+  const currentTerm = React.useMemo(() => {
+    if (currentTermData && typeof currentTermData.setting_value === 'object' && currentTermData.setting_value !== null) {
+      const settingValue = currentTermData.setting_value as any;
+      return {
+        term_name: settingValue.term_name || 'First Term',
+        academic_year: settingValue.academic_year || '2024/2025'
+      };
+    }
+    return {
+      term_name: 'First Term',
+      academic_year: '2024/2025'
+    };
+  }, [currentTermData]);
 
-  // Current term information
-  const currentTerm = currentTermData || { term_name: 'First Term', academic_year: '2024/2025' };
+  // Get dashboard statistics
+  const { data: studentsCount, loading: studentsLoading } = useSupabaseQuery(
+    async () => {
+      const { count, error } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true });
+      return { data: count, error };
+    },
+    []
+  );
 
-  // Calculate days until term ends (simplified calculation)
-  const daysUntilTermEnd = 45; // This would need actual term end date calculation
+  const { data: usersCount, loading: usersLoading } = useSupabaseQuery(
+    async () => {
+      const { count, error } = await supabase
+        .from('user_roles')
+        .select('*', { count: 'exact', head: true });
+      return { data: count, error };
+    },
+    []
+  );
 
-  // Prepare scratch card chart data
-  const scratchCardChartData = [
-    { name: 'Used', value: usedScratchCards },
-    { name: 'Unused', value: unusedScratchCards },
+  const { data: subjectsCount, loading: subjectsLoading } = useSupabaseQuery(
+    async () => {
+      const { count, error } = await supabase
+        .from('subjects')
+        .select('*', { count: 'exact', head: true });
+      return { data: count, error };
+    },
+    []
+  );
+
+  const { data: resultsCount, loading: resultsLoading } = useSupabaseQuery(
+    async () => {
+      const { count, error } = await supabase
+        .from('results')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_approved', true);
+      return { data: count, error };
+    },
+    []
+  );
+
+  const loading = termLoading || studentsLoading || usersLoading || subjectsLoading || resultsLoading;
+
+  const quickActions = [
+    {
+      title: "User Management",
+      description: "Manage system users and roles",
+      icon: Users,
+      href: "/users",
+      color: "blue"
+    },
+    {
+      title: "Student Management",
+      description: "Add and manage students",
+      icon: GraduationCap,
+      href: "/students",
+      color: "green"
+    },
+    {
+      title: "Classes & Subjects",
+      description: "Manage classes and subjects",
+      icon: BookOpen,
+      href: "/classes",
+      color: "purple"
+    },
+    {
+      title: "Result Entry",
+      description: "Enter and manage results",
+      icon: FileText,
+      href: "/results/entry",
+      color: "orange"
+    },
+    {
+      title: "Analytics",
+      description: "View performance analytics",
+      icon: TrendingUp,
+      href: "/analytics",
+      color: "red"
+    },
+    {
+      title: "Settings",
+      description: "Configure system settings",
+      icon: Calendar,
+      href: "/settings",
+      color: "gray"
+    }
   ];
-
-  const loading = studentsLoading || userRolesLoading || resultsLoading || scratchCardsLoading || currentTermLoading;
 
   if (loading) {
     return (
@@ -98,194 +150,92 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold text-gray-900">School Dashboard</h1>
-      
-      {/* Current Term Display */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex justify-between items-center">
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-medium text-emerald-800">Current Academic Period</h3>
-          <h2 className="text-2xl font-bold text-emerald-700">
-            {currentTerm.term_name} {currentTerm.academic_year}
-          </h2>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Current Term: {currentTerm.term_name} {currentTerm.academic_year}
+          </p>
         </div>
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-md border border-emerald-200 shadow-sm">
-          <Clock className="h-5 w-5 text-emerald-600" />
-          <span className="text-sm font-medium">
-            {daysUntilTermEnd > 0 ? `Term ends in ${daysUntilTermEnd} days` : 'Term ended'}
+        <div className="flex items-center space-x-2">
+          <User className="h-5 w-5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            {user?.user_metadata?.full_name || user?.email}
+          </span>
+          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+            {userRole}
           </span>
         </div>
       </div>
-      
-      {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <UserRound className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
-            <p className="text-xs text-muted-foreground">{activeStudents} active students</p>
-            <Progress className="mt-3" value={totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalTeachers}</div>
-            <p className="text-xs text-muted-foreground">Active staff members</p>
-            <Progress className="mt-3" value={Math.min(totalTeachers * 2, 100)} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Results</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingResults}</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
-            <Progress className="mt-3" value={Math.min(pendingResults * 5, 100)} />
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <span className="text-2xl">₦</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">From scratch cards</p>
-            <Progress className="mt-3" value={Math.min((totalRevenue / 10000) * 100, 100)} />
-          </CardContent>
-        </Card>
+      {/* Statistics Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Students"
+          value={studentsCount || 0}
+          icon={GraduationCap}
+          trend={`${studentsCount || 0} registered`}
+          color="blue"
+        />
+        <StatsCard
+          title="System Users"
+          value={usersCount || 0}
+          icon={UserPlus}
+          trend={`${usersCount || 0} active users`}
+          color="green"
+        />
+        <StatsCard
+          title="Subjects"
+          value={subjectsCount || 0}
+          icon={BookOpen}
+          trend={`${subjectsCount || 0} configured`}
+          color="purple"
+        />
+        <StatsCard
+          title="Approved Results"
+          value={resultsCount || 0}
+          icon={FileText}
+          trend={`${resultsCount || 0} entries`}
+          color="orange"
+        />
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-7">
-        {/* System Overview */}
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>System Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Active Students</p>
-                  <p className="text-xs text-muted-foreground">{activeStudents} enrolled</p>
-                </div>
-                <span className="text-xs text-muted-foreground">Current</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Teaching Staff</p>
-                  <p className="text-xs text-muted-foreground">{totalTeachers} members</p>
-                </div>
-                <span className="text-xs text-muted-foreground">Active</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Pending Approvals</p>
-                  <p className="text-xs text-muted-foreground">{pendingResults} results</p>
-                </div>
-                <span className="text-xs text-muted-foreground">Waiting</span>
-              </div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium">Scratch Cards</p>
-                  <p className="text-xs text-muted-foreground">{totalScratchCards} total cards</p>
-                </div>
-                <span className="text-xs text-muted-foreground">Generated</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Scratch Card Usage */}
-        <Card className="md:col-span-4">
-          <CardHeader>
-            <CardTitle>Scratch Card Analytics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="chart">
-              <TabsList className="mb-4">
-                <TabsTrigger value="chart">Chart</TabsTrigger>
-                <TabsTrigger value="table">Table</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="chart" className="space-y-4">
-                <div className="h-[200px]">
-                  {totalScratchCards > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={scratchCardChartData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No scratch cards generated yet
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-between text-sm">
-                  <div>
-                    <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2" />
-                      <span>Used: {totalScratchCards > 0 ? Math.round((usedScratchCards / totalScratchCards) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-gray-300 mr-2" />
-                      <span>Unused: {totalScratchCards > 0 ? Math.round((unusedScratchCards / totalScratchCards) * 100) : 0}%</span>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="table">
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 text-sm font-medium">
-                    <div>Status</div>
-                    <div>Count</div>
-                    <div>Revenue</div>
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-3 text-sm">
-                    <div>Used</div>
-                    <div>{usedScratchCards}</div>
-                    <div>₦{totalRevenue.toLocaleString()}</div>
-                  </div>
-                  <div className="grid grid-cols-3 text-sm">
-                    <div>Unused</div>
-                    <div>{unusedScratchCards}</div>
-                    <div>₦0</div>
-                  </div>
-                  <div className="grid grid-cols-3 text-sm font-medium">
-                    <div>Total</div>
-                    <div>{totalScratchCards}</div>
-                    <div>₦{totalRevenue.toLocaleString()}</div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Card key={action.href} className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <Icon className={`h-5 w-5 mr-2 text-${action.color}-600`} />
+                    {action.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {action.description}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => navigate(action.href)}
+                    className="w-full"
+                  >
+                    Access
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;
