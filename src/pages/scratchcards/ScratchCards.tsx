@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -260,7 +259,7 @@ const ScratchCards = () => {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load data: {typeof error === 'string' ? error : error.message || 'Unknown error'}
+            Failed to load data: {typeof error === 'string' ? error : 'Unknown error'}
             <Button onClick={refetchCards} variant="outline" size="sm" className="ml-2">
               Retry
             </Button>
