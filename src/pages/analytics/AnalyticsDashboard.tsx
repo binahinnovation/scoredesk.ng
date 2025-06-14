@@ -31,27 +31,38 @@ export default function AnalyticsDashboard() {
   });
   const [selectedTerm, setSelectedTerm] = useState<string>("all");
   const [terms, setTerms] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingData, setLoadingData] = useState(true); // Initial state is true
 
   const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
   useEffect(() => {
+    console.log("AnalyticsDashboard useEffect triggered. HasPermission:", hasPermission, "SelectedTerm:", selectedTerm);
     if (hasPermission("Analytics")) {
       fetchAnalytics();
+    } else {
+      // If permission is lost or not available, ensure loadingData is false if not already loading user data.
+      if (!loading) { // 'loading' here is from useUserRole
+         setLoadingData(false);
+         console.log("No permission for Analytics, setting loadingData to false.");
+      }
     }
-  }, [hasPermission, selectedTerm]);
+  }, [hasPermission, selectedTerm, loading]); // Added loading from useUserRole to dependencies
 
   const fetchAnalytics = async () => {
+    console.log("fetchAnalytics called. Current loadingData before set:", loadingData, "selectedTerm:", selectedTerm);
     setLoadingData(true);
+    console.log("setLoadingData(true) called. loadingData should be true now.");
     try {
+      console.log("Starting data fetch...");
       // Fetch basic counts
       const [studentsResult, teachersResult, subjectsResult, classesResult, termsResult] = await Promise.all([
         supabase.from("students").select("id", { count: "exact" }),
-        supabase.from("user_roles").select("id", { count: "exact" }).neq("role", "Principal"),
+        supabase.from("user_roles").select("id", { count: "exact" }).neq("role", "Principal"), // Consider if 'Principal' should be excluded or if it's specific to 'teachers' count
         supabase.from("subjects").select("id", { count: "exact" }),
         supabase.from("classes").select("id", { count: "exact" }),
         supabase.from("terms").select("*").order("created_at", { ascending: false })
       ]);
+      console.log("Basic counts fetched:", { studentsResult, teachersResult, subjectsResult, classesResult, termsResult });
 
       // Fetch results for analytics
       let resultsQuery = supabase
@@ -70,36 +81,55 @@ export default function AnalyticsDashboard() {
       }
 
       const resultsResult = await resultsQuery;
+      console.log("Raw results from Supabase (resultsResult):", JSON.stringify(resultsResult));
+
+      if (resultsResult.error) {
+          console.error("Error in resultsResult from Supabase:", resultsResult.error);
+      }
 
       // Process data for charts
-      const classPerformance = processClassPerformance(resultsResult.data || []);
-      const subjectPerformance = processSubjectPerformance(resultsResult.data || []);
-      const resultsAnalytics = processResultsAnalytics(resultsResult.data || []);
+      console.log("Processing data for charts with resultsResult.data:", resultsResult.data);
+      const classPerformanceData = processClassPerformance(resultsResult.data || []);
+      console.log("Processed classPerformanceData:", JSON.stringify(classPerformanceData));
+      const subjectPerformanceData = processSubjectPerformance(resultsResult.data || []);
+      console.log("Processed subjectPerformanceData:", JSON.stringify(subjectPerformanceData));
+      const processedResultsAnalytics = processResultsAnalytics(resultsResult.data || []);
+      console.log("Processed resultsAnalytics (processedResultsAnalytics):", JSON.stringify(processedResultsAnalytics));
 
-      setAnalytics({
+      setAnalytics({ // Removed functional update for now, direct set to ensure counts are included
         totalStudents: studentsResult.count || 0,
         totalTeachers: teachersResult.count || 0,
         totalSubjects: subjectsResult.count || 0,
         totalClasses: classesResult.count || 0,
-        resultsAnalytics,
-        classPerformance,
-        subjectPerformance,
-        termComparison: [] // This remains as is, assuming it's for future development
+        resultsAnalytics: processedResultsAnalytics,
+        classPerformance: classPerformanceData,
+        subjectPerformance: subjectPerformanceData,
+        termComparison: [] // This remains as is
       });
+      console.log("setAnalytics called with new data.");
 
       setTerms(termsResult.data || []);
+      console.log("setTerms called.");
+
     } catch (error) {
-      console.error("Error fetching analytics:", error);
+      console.error("Error fetching analytics in CATCH block:", error);
+      // Ensure UI reflects error state if needed, for now, just log
     } finally {
+      console.log("FINALLY block reached. Setting loadingData to false.");
       setLoadingData(false);
+      console.log("setLoadingData(false) called. loadingData should be false now.");
     }
   };
 
   const processClassPerformance = (results: any[]) => {
+    console.log("processClassPerformance called with results:", results.length);
     const classStats = new Map();
     
     results.forEach(result => {
-      if (!result.students?.classes?.name || !result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) return;
+      if (!result.students?.classes?.name || !result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) {
+        // console.log("Skipping result in processClassPerformance due to missing data:", result);
+        return;
+      }
       
       const className = result.students.classes.name;
       const percentage = (result.score / result.assessments.max_score) * 100;
@@ -113,18 +143,24 @@ export default function AnalyticsDashboard() {
       stats.count++;
     });
 
-    return Array.from(classStats.entries()).map(([className, stats]) => ({
+    const performanceData = Array.from(classStats.entries()).map(([className, stats]) => ({
       name: className,
       average: stats.scores.length > 0 ? stats.scores.reduce((sum: number, score: number) => sum + score, 0) / stats.scores.length : 0,
       count: stats.count
     })).sort((a, b) => b.average - a.average);
+    console.log("processClassPerformance returning:", performanceData);
+    return performanceData;
   };
 
   const processSubjectPerformance = (results: any[]) => {
+    console.log("processSubjectPerformance called with results:", results.length);
     const subjectStats = new Map();
     
     results.forEach(result => {
-      if (!result.subjects?.name || !result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) return;
+      if (!result.subjects?.name || !result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) {
+        // console.log("Skipping result in processSubjectPerformance due to missing data:", result);
+        return;
+      }
       
       const subjectName = result.subjects.name;
       const percentage = (result.score / result.assessments.max_score) * 100;
@@ -137,15 +173,18 @@ export default function AnalyticsDashboard() {
       stats.scores.push(percentage);
       stats.count++;
     });
-
-    return Array.from(subjectStats.entries()).map(([subjectName, stats]) => ({
+    
+    const performanceData = Array.from(subjectStats.entries()).map(([subjectName, stats]) => ({
       name: subjectName,
       average: stats.scores.length > 0 ? stats.scores.reduce((sum: number, score: number) => sum + score, 0) / stats.scores.length : 0,
       count: stats.count
     })).sort((a, b) => b.average - a.average);
+    console.log("processSubjectPerformance returning:", performanceData);
+    return performanceData;
   };
 
   const processResultsAnalytics = (results: any[]) => {
+    console.log("processResultsAnalytics called with results:", results.length);
     const gradeRanges = [
       { name: "A (90-100%)", min: 90, max: 100, count: 0 },
       { name: "B (80-89%)", min: 80, max: 89, count: 0 },
@@ -155,8 +194,12 @@ export default function AnalyticsDashboard() {
       { name: "F (0-49%)", min: 0, max: 49, count: 0 }
     ];
 
+    
     results.forEach(result => {
-      if (!result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) return;
+      if (!result.assessments?.max_score || result.assessments.max_score === 0 || result.score === null || result.score === undefined) {
+        // console.log("Skipping result in processResultsAnalytics due to missing data:", result);
+        return;
+      }
       
       const percentage = (result.score / result.assessments.max_score) * 100;
       
@@ -167,15 +210,17 @@ export default function AnalyticsDashboard() {
         }
       }
     });
-
-    return gradeRanges.filter(range => range.count > 0);
+    const analyticsData = gradeRanges.filter(range => range.count > 0);
+    console.log("processResultsAnalytics returning:", analyticsData);
+    return analyticsData;
   };
 
-  if (loading) {
+  if (loading) { // This 'loading' is from useUserRole
     return <div className="flex items-center justify-center h-64">Loading user data...</div>;
   }
 
   if (!hasPermission("Analytics")) {
+    
     return (
       <div className="flex flex-col gap-6 p-4 md:p-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
@@ -192,9 +237,13 @@ export default function AnalyticsDashboard() {
       </div>
     );
   }
+  
+  // Added a log here to see the state of loadingData just before rendering charts
+  console.log("Rendering charts. loadingData:", loadingData, "analytics:", analytics);
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
         <Select value={selectedTerm} onValueChange={setSelectedTerm}>
@@ -343,10 +392,9 @@ export default function AnalyticsDashboard() {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent, count }) => `${name}: ${count} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={100} // Increased radius
+                    outerRadius={100} 
                     fill="#8884d8"
                     dataKey="count"
-                    
                   >
                     {analytics.resultsAnalytics.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -373,6 +421,7 @@ export default function AnalyticsDashboard() {
                  </div>
             ) : (
             <div className="space-y-4">
+              
               <div className="flex items-center justify-between p-4 border dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-200">Highest Performing Class</p>
