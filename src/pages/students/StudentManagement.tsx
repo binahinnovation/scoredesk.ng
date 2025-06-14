@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { toast } from "@/components/ui/use-toast";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Download, FileText } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
 
 interface Student {
@@ -40,8 +40,12 @@ interface Class {
   description?: string;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({
@@ -236,10 +240,127 @@ export default function StudentManagement() {
     }
   };
 
-  const filteredStudents = students.filter(student =>
-    `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.student_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and paginate students
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = 
+      `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.student_id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesClass = selectedClass === 'all' || student.class_id === selectedClass;
+    
+    return matchesSearch && matchesClass;
+  });
+
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Reset to first page when filters change
+  const handleFilterChange = (newSearchTerm?: string, newClass?: string) => {
+    if (newSearchTerm !== undefined) setSearchTerm(newSearchTerm);
+    if (newClass !== undefined) setSelectedClass(newClass);
+    setCurrentPage(1);
+  };
+
+  // Export functions
+  const exportToCSV = () => {
+    const selectedClassStudents = selectedClass === 'all' ? filteredStudents : 
+      filteredStudents.filter(s => s.class_id === selectedClass);
+    
+    const headers = ['Student ID', 'Name', 'Class', 'Gender', 'Email', 'Phone', 'Parent Name', 'Parent Phone', 'Status'];
+    const csvData = [
+      headers.join(','),
+      ...selectedClassStudents.map(student => [
+        student.student_id,
+        `"${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}"`,
+        `"${student.classes?.name || 'No Class'}"`,
+        student.gender || 'N/A',
+        student.email || '',
+        student.phone || '',
+        `"${student.parent_name || ''}"`,
+        student.parent_phone || '',
+        student.status
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students_${selectedClass === 'all' ? 'all' : classes.find(c => c.id === selectedClass)?.name || 'class'}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({ title: "CSV exported successfully" });
+  };
+
+  const exportToPDF = () => {
+    const selectedClassStudents = selectedClass === 'all' ? filteredStudents : 
+      filteredStudents.filter(s => s.class_id === selectedClass);
+    
+    // Create a simple HTML table for PDF printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      const className = selectedClass === 'all' ? 'All Classes' : classes.find(c => c.id === selectedClass)?.name || 'Class';
+      
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Student List - ${className}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; text-align: center; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              tr:nth-child(even) { background-color: #f9f9f9; }
+              .no-print { display: none; }
+              @media print { .no-print { display: none; } }
+            </style>
+          </head>
+          <body>
+            <h1>Student List - ${className}</h1>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Total Students: ${selectedClassStudents.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>S/N</th>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Class</th>
+                  <th>Gender</th>
+                  <th>Phone</th>
+                  <th>Parent Name</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${selectedClassStudents.map((student, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${student.student_id}</td>
+                    <td>${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}</td>
+                    <td>${student.classes?.name || 'No Class'}</td>
+                    <td>${student.gender || 'N/A'}</td>
+                    <td>${student.phone || 'N/A'}</td>
+                    <td>${student.parent_name || 'N/A'}</td>
+                    <td>${student.status}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    
+    toast({ title: "PDF export initiated" });
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -443,74 +564,164 @@ export default function StudentManagement() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <CardTitle>Students</CardTitle>
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-gray-500" />
-              <Input
-                placeholder="Search students..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
-              />
+            
+            {/* Filters and Export */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+              {/* Search */}
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-gray-500" />
+                <Input
+                  placeholder="Search students..."
+                  value={searchTerm}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="w-64"
+                />
+              </div>
+              
+              {/* Class Filter */}
+              <Select value={selectedClass} onValueChange={(value) => handleFilterChange(undefined, value)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Export Buttons */}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportToPDF}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+              </div>
             </div>
+          </div>
+          
+          {/* Results summary */}
+          <div className="text-sm text-gray-600">
+            Showing {paginatedStudents.length} of {filteredStudents.length} students
+            {selectedClass !== 'all' && (
+              <span> in {classes.find(c => c.id === selectedClass)?.name}</span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4">Loading students...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Contact</TableHead>
-                  {canManageStudents && <TableHead>Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-medium">{student.student_id}</TableCell>
-                    <TableCell>
-                      {`${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`}
-                    </TableCell>
-                    <TableCell>{student.classes?.name || 'No Class'}</TableCell>
-                    <TableCell>{student.gender || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(student.status)}>
-                        {student.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{student.email || student.phone || 'N/A'}</TableCell>
-                    {canManageStudents && (
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditDialog(student)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDelete(student.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Gender</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Contact</TableHead>
+                    {canManageStudents && <TableHead>Actions</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.student_id}</TableCell>
+                      <TableCell>
+                        {`${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`}
+                      </TableCell>
+                      <TableCell>{student.classes?.name || 'No Class'}</TableCell>
+                      <TableCell>{student.gender || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(student.status)}>
+                          {student.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{student.email || student.phone || 'N/A'}</TableCell>
+                      {canManageStudents && (
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEditDialog(student)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(student.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      {currentPage > 1 && (
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(currentPage - 1);
+                            }}
+                          />
+                        </PaginationItem>
+                      )}
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            href="#"
+                            isActive={page === currentPage}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(page);
+                            }}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      
+                      {currentPage < totalPages && (
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#" 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(currentPage + 1);
+                            }}
+                          />
+                        </PaginationItem>
+                      )}
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
