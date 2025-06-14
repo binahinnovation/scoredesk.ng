@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { UserRole } from '@/types/user';
@@ -55,7 +55,7 @@ export function useUserRole() {
     fetchUserRole();
   }, [user]);
 
-  const hasPermission = (feature: string) => {
+  const hasPermission = useCallback((feature: string) => {
     if (!userRole) return false;
     
     // Special case for super admins
@@ -84,7 +84,7 @@ export function useUserRole() {
       default:
         return false;
     }
-  };
+  }, [userRole, user]);
 
   return { userRole, loading, hasPermission };
 }
