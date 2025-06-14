@@ -63,13 +63,24 @@ const ScratchCards = () => {
   } = useSupabaseQuery<ScratchCard[]>(
     async () => {
       console.log("Fetching scratch cards...");
-      const { data, error } = await supabase
-        .from('scratch_cards')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log("Scratch cards query result:", { data, error });
-      return { data, error };
+      try {
+        const { data, error } = await supabase
+          .from('scratch_cards')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        console.log("Scratch cards query result:", { data, error });
+        
+        if (error) {
+          console.error("Scratch cards query error:", error);
+          throw new Error(error.message);
+        }
+        
+        return { data: data || [], error: null };
+      } catch (err) {
+        console.error("Scratch cards fetch error:", err);
+        return { data: null, error: err };
+      }
     },
     []
   );
@@ -81,13 +92,24 @@ const ScratchCards = () => {
   } = useSupabaseQuery<Term[]>(
     async () => {
       console.log("Fetching terms...");
-      const { data, error } = await supabase
-        .from('terms')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log("Terms query result:", { data, error });
-      return { data, error };
+      try {
+        const { data, error } = await supabase
+          .from('terms')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        console.log("Terms query result:", { data, error });
+        
+        if (error) {
+          console.error("Terms query error:", error);
+          throw new Error(error.message);
+        }
+        
+        return { data: data || [], error: null };
+      } catch (err) {
+        console.error("Terms fetch error:", err);
+        return { data: null, error: err };
+      }
     },
     []
   );
@@ -167,7 +189,7 @@ const ScratchCards = () => {
   const loading = loadingCards || loadingTerms;
   const error = cardsError || termsError;
 
-  console.log("Render state:", { loading, error, totalCards });
+  console.log("Render state:", { loading, error, totalCards, scratchCardsLength: scratchCards.length });
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -238,7 +260,7 @@ const ScratchCards = () => {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load data: {error.toString()}
+            Failed to load data: {error instanceof Error ? error.message : String(error)}
             <Button onClick={refetchCards} variant="outline" size="sm" className="ml-2">
               Retry
             </Button>
@@ -315,6 +337,14 @@ const ScratchCards = () => {
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner size="lg" />
                 <span className="ml-2">Loading scratch cards...</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-500 mb-4">Error loading scratch cards</p>
+                <Button onClick={refetchCards} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="overflow-x-auto">

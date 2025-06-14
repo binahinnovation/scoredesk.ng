@@ -1,238 +1,130 @@
-
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GraduationCap, UserPlus, BookOpen, FileText } from 'lucide-react';
+import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { useUserRole } from '@/hooks/use-user-role';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/use-auth';
-import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
-import { supabase } from '@/integrations/supabase/client';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { StatsCard } from '@/components/dashboard/StatsCard';
-import {
-  Users,
-  GraduationCap,
-  BookOpen,
-  FileText,
-  TrendingUp,
-  Calendar,
-  User,
-  UserPlus
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const Dashboard = () => {
-  const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+interface StatsCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+}
 
-  // Get current term data
-  const { data: currentTermData, loading: termLoading } = useSupabaseQuery(
-    async () => {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('setting_value')
-        .eq('setting_key', 'current_term')
-        .single();
-      return { data, error };
-    },
-    []
+const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color }) => {
+  return (
+    <div className={`bg-${color}-50 rounded-lg shadow-md p-4 flex items-center`}>
+      <div className={`bg-${color}-100 text-${color}-500 p-3 rounded-full mr-4`}>
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
+      </div>
+    </div>
   );
+};
 
-  // Parse current term data safely
-  const currentTerm = React.useMemo(() => {
-    if (currentTermData && typeof currentTermData.setting_value === 'object' && currentTermData.setting_value !== null) {
-      const settingValue = currentTermData.setting_value as any;
-      return {
-        term_name: settingValue.term_name || 'First Term',
-        academic_year: settingValue.academic_year || '2024/2025'
-      };
-    }
-    return {
-      term_name: 'First Term',
-      academic_year: '2024/2025'
-    };
-  }, [currentTermData]);
+const Dashboard: React.FC = () => {
+  const {
+    studentsCount,
+    usersCount,
+    subjectsCount,
+    resultsCount,
+    loading,
+    error,
+  } = useDashboardData();
 
-  // Get dashboard statistics
-  const { data: studentsCount, loading: studentsLoading } = useSupabaseQuery(
-    async () => {
-      const { count, error } = await supabase
-        .from('students')
-        .select('*', { count: 'exact', head: true });
-      return { data: count, error };
-    },
-    []
-  );
-
-  const { data: usersCount, loading: usersLoading } = useSupabaseQuery(
-    async () => {
-      const { count, error } = await supabase
-        .from('user_roles')
-        .select('*', { count: 'exact', head: true });
-      return { data: count, error };
-    },
-    []
-  );
-
-  const { data: subjectsCount, loading: subjectsLoading } = useSupabaseQuery(
-    async () => {
-      const { count, error } = await supabase
-        .from('subjects')
-        .select('*', { count: 'exact', head: true });
-      return { data: count, error };
-    },
-    []
-  );
-
-  const { data: resultsCount, loading: resultsLoading } = useSupabaseQuery(
-    async () => {
-      const { count, error } = await supabase
-        .from('results')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_approved', true);
-      return { data: count, error };
-    },
-    []
-  );
-
-  const loading = termLoading || studentsLoading || usersLoading || subjectsLoading || resultsLoading;
-
-  const quickActions = [
-    {
-      title: "User Management",
-      description: "Manage system users and roles",
-      icon: Users,
-      href: "/users",
-      color: "blue"
-    },
-    {
-      title: "Student Management",
-      description: "Add and manage students",
-      icon: GraduationCap,
-      href: "/students",
-      color: "green"
-    },
-    {
-      title: "Classes & Subjects",
-      description: "Manage classes and subjects",
-      icon: BookOpen,
-      href: "/classes",
-      color: "purple"
-    },
-    {
-      title: "Result Entry",
-      description: "Enter and manage results",
-      icon: FileText,
-      href: "/results/entry",
-      color: "orange"
-    },
-    {
-      title: "Analytics",
-      description: "View performance analytics",
-      icon: TrendingUp,
-      href: "/analytics",
-      color: "red"
-    },
-    {
-      title: "Settings",
-      description: "Configure system settings",
-      icon: Calendar,
-      href: "/settings",
-      color: "gray"
-    }
-  ];
+  const { hasPermission } = useUserRole();
 
   if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading dashboard data...</div>;
+  }
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-        <span className="ml-2">Loading dashboard...</span>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load data: {error.message}
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Current Term: {currentTerm.term_name} {currentTerm.academic_year}
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-gray-600">Welcome to your school management dashboard</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <User className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {user?.user_metadata?.full_name || user?.email}
-          </span>
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-            {userRole}
-          </span>
-        </div>
-      </div>
 
-      {/* Statistics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Students"
-          value={studentsCount || 0}
-          icon={<GraduationCap className="h-4 w-4" />}
-          trend={`${studentsCount || 0} registered`}
-          color="blue"
-        />
-        <StatsCard
-          title="System Users"
-          value={usersCount || 0}
-          icon={<UserPlus className="h-4 w-4" />}
-          trend={`${usersCount || 0} active users`}
-          color="green"
-        />
-        <StatsCard
-          title="Subjects"
-          value={subjectsCount || 0}
-          icon={<BookOpen className="h-4 w-4" />}
-          trend={`${subjectsCount || 0} configured`}
-          color="purple"
-        />
-        <StatsCard
-          title="Approved Results"
-          value={resultsCount || 0}
-          icon={<FileText className="h-4 w-4" />}
-          trend={`${resultsCount || 0} entries`}
-          color="orange"
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Card key={action.href} className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-lg">
-                    <Icon className={`h-5 w-5 mr-2 text-${action.color}-600`} />
-                    {action.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {action.description}
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => navigate(action.href)}
-                    className="w-full"
-                  >
-                    Access
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Total Students"
+            value={studentsCount || 0}
+            icon={<GraduationCap className="h-4 w-4" />}
+            color="blue"
+          />
+          <StatsCard
+            title="System Users"
+            value={usersCount || 0}
+            icon={<UserPlus className="h-4 w-4" />}
+            color="green"
+          />
+          <StatsCard
+            title="Subjects"
+            value={subjectsCount || 0}
+            icon={<BookOpen className="h-4 w-4" />}
+            color="purple"
+          />
+          <StatsCard
+            title="Approved Results"
+            value={resultsCount || 0}
+            icon={<FileText className="h-4 w-4" />}
+            color="orange"
+          />
         </div>
+
+        {/* Role-Based Sections */}
+        {hasPermission('ManageResults') && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Results Management</h2>
+            <p className="text-gray-600">Manage student results and performance.</p>
+            <Link to="/results">
+              <Button>Go to Results</Button>
+            </Link>
+          </div>
+        )}
+
+        {hasPermission('ManageUsers') && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">User Management</h2>
+            <p className="text-gray-600">Manage system users and roles.</p>
+            <Link to="/users">
+              <Button>Go to Users</Button>
+            </Link>
+          </div>
+        )}
+
+        {hasPermission('ManageScratchCards') && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Scratch Cards Management</h2>
+            <p className="text-gray-600">Manage scratch cards for result access.</p>
+            <Link to="/scratchcards">
+              <Button>Go to Scratch Cards</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
