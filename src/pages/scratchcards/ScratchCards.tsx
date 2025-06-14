@@ -260,7 +260,7 @@ const ScratchCards = () => {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load data: {error instanceof Error ? error.message : String(error)}
+            Failed to load data: {typeof error === 'string' ? error : error.message || 'Unknown error'}
             <Button onClick={refetchCards} variant="outline" size="sm" className="ml-2">
               Retry
             </Button>
