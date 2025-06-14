@@ -175,28 +175,28 @@ const Dashboard = () => {
         <StatsCard
           title="Total Students"
           value={studentsCount || 0}
-          icon={GraduationCap}
+          icon={<GraduationCap className="h-4 w-4" />}
           trend={`${studentsCount || 0} registered`}
           color="blue"
         />
         <StatsCard
           title="System Users"
           value={usersCount || 0}
-          icon={UserPlus}
+          icon={<UserPlus className="h-4 w-4" />}
           trend={`${usersCount || 0} active users`}
           color="green"
         />
         <StatsCard
           title="Subjects"
           value={subjectsCount || 0}
-          icon={BookOpen}
+          icon={<BookOpen className="h-4 w-4" />}
           trend={`${subjectsCount || 0} configured`}
           color="purple"
         />
         <StatsCard
           title="Approved Results"
           value={resultsCount || 0}
-          icon={FileText}
+          icon={<FileText className="h-4 w-4" />}
           trend={`${resultsCount || 0} entries`}
           color="orange"
         />

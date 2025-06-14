@@ -53,6 +53,8 @@ const ScratchCards = () => {
   const [showCardDetails, setShowCardDetails] = useState<boolean>(false);
   const { toast } = useToast();
 
+  console.log("ScratchCards component mounted");
+
   const { 
     data: scratchCardsData, 
     loading: loadingCards, 
@@ -60,10 +62,13 @@ const ScratchCards = () => {
     refetch: refetchCards 
   } = useSupabaseQuery<ScratchCard[]>(
     async () => {
+      console.log("Fetching scratch cards...");
       const { data, error } = await supabase
         .from('scratch_cards')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      console.log("Scratch cards query result:", { data, error });
       return { data, error };
     },
     []
@@ -75,14 +80,26 @@ const ScratchCards = () => {
     error: termsError 
   } = useSupabaseQuery<Term[]>(
     async () => {
+      console.log("Fetching terms...");
       const { data, error } = await supabase
         .from('terms')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      console.log("Terms query result:", { data, error });
       return { data, error };
     },
     []
   );
+
+  console.log("Component state:", {
+    scratchCardsData,
+    loadingCards,
+    cardsError,
+    termsData,
+    loadingTerms,
+    termsError
+  });
 
   const scratchCards = scratchCardsData || [];
   const terms = termsData || [];
@@ -149,6 +166,8 @@ const ScratchCards = () => {
 
   const loading = loadingCards || loadingTerms;
   const error = cardsError || termsError;
+
+  console.log("Render state:", { loading, error, totalCards });
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -219,7 +238,7 @@ const ScratchCards = () => {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Failed to load data: {error}
+            Failed to load data: {error.toString()}
             <Button onClick={refetchCards} variant="outline" size="sm" className="ml-2">
               Retry
             </Button>
