@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/hooks/use-auth'
+import { supabase } from '@/integrations/supabase/client'; // FIXED: import supabase
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -18,7 +20,7 @@ const formSchema = z.object({
 });
 
 const CreateLoginDetails = () => {
-  const { user, userRole, isSuperAdmin } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,7 +38,12 @@ const CreateLoginDetails = () => {
 
     setIsLoading(true);
 
-    if (!form.getValues("email") || !form.getValues("password")) {
+    // Use getValues instead of form.email etc.
+    const email = form.getValues("email");
+    const password = form.getValues("password");
+    const fullName = form.getValues("fullName");
+
+    if (!email || !password) {
       toast({
         title: "Error",
         description: "Please fill in all fields.",
@@ -46,24 +53,30 @@ const CreateLoginDetails = () => {
       return;
     }
 
-    let school_name = null;
+    // Get principal's school name from logged in user context
+    let school_name: string | null = null;
     if (user && user.user_metadata && user.user_metadata.school_name) {
       school_name = user.user_metadata.school_name;
-    } else if (user && user.school_name) {
-      school_name = user.school_name;
-    } else {
+    } else if (user && (user as any).school_name) {
+      school_name = (user as any).school_name;
     }
 
     if (!school_name) {
-      alert("Could not determine your school. Please reload or contact support.");
+      toast({
+        title: "Missing School",
+        description: "Could not determine your school. Please reload or contact support.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
       return;
     }
 
+    // Create the user using Supabase admin API
     const { data, error } = await supabase.auth.admin.createUser({
-      email: form.email,
-      password: form.password,
+      email,
+      password,
       user_metadata: {
-        full_name: form.fullName || form.email,
+        full_name: fullName || email,
         school_name: school_name,
       },
     });
