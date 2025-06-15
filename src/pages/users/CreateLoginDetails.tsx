@@ -54,6 +54,7 @@ const CreateLoginDetails = () => {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRole, setSelectedRole] = useState<UserRole | ''>('');
   const [schoolAlias, setSchoolAlias] = useState('');
+  const [schoolName, setSchoolName] = useState('');
   const [customSubject, setCustomSubject] = useState('');
   const [showCustomSubject, setShowCustomSubject] = useState(false);
   const [loginPreviews, setLoginPreviews] = useState<LoginPreview[]>([]);
@@ -73,7 +74,7 @@ const CreateLoginDetails = () => {
 
   // Load school alias from user profile
   useEffect(() => {
-    const loadSchoolAlias = async () => {
+    const loadSchoolInfo = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -84,16 +85,17 @@ const CreateLoginDetails = () => {
             .single();
           
           if (profile?.school_name) {
+            setSchoolName(profile.school_name);
             // Convert school name to alias (lowercase, remove spaces)
             const alias = profile.school_name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
             setSchoolAlias(alias);
           }
         }
       } catch (error) {
-        console.error('Error loading school alias:', error);
+        console.error('Error loading school info:', error);
       }
     };
-    loadSchoolAlias();
+    loadSchoolInfo();
   }, []);
 
   const generatePassword = () => {
@@ -237,7 +239,8 @@ const CreateLoginDetails = () => {
                 role: preview.role,
                 subjects: preview.subjects,
                 classes: preview.classes,
-                school_alias: schoolAlias,
+                school_name: schoolName,
+                full_name: preview.username,
                 created_by: user.id
               }
             }
@@ -263,19 +266,9 @@ const CreateLoginDetails = () => {
             } else {
               addDebugLog(`Successfully created role for user: ${authData.user.id}`);
             }
-
-            // Create profile entry with school information
-            const { error: profileError } = await supabase.from('profiles').insert({
-              id: authData.user.id,
-              full_name: preview.username,
-              school_name: schoolAlias
-            });
-
-            if (profileError) {
-              addDebugLog(`Profile creation error for ${preview.email}: ${profileError.message}`);
-            } else {
-              addDebugLog(`Successfully created profile for user: ${authData.user.id}`);
-            }
+            
+            // The profile is created by a trigger, so no need to insert manually.
+            // We've passed the necessary data (school_name, full_name) in the signUp options.
 
             createdUsers.push(preview);
           } else {
