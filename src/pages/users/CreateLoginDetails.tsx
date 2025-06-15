@@ -304,6 +304,11 @@ const CreateLoginDetails = () => {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
           // Assign both school_id and school_name to user
+
+          // --- session isolation fix start ---
+          // Before signUp, always restore original session to try to stay in principal context
+          await supabase.auth.setSession(originalSession);
+
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -321,8 +326,13 @@ const CreateLoginDetails = () => {
             }
           });
 
-          // Restore session
+          // Restore the original session after EVERY signUp call, for every user created
           await supabase.auth.setSession(originalSession);
+
+          // Help Supabase process switching the session before next iteration (to avoid race conditions)
+          await new Promise((res) => setTimeout(res, 200)); // 200ms delay
+
+          // --- session isolation fix end ---
 
           if (authError) {
             addDebugLog(`Auth error for ${preview.email}: ${authError.message}`);
@@ -403,6 +413,7 @@ const CreateLoginDetails = () => {
         variant: "destructive",
       });
     } finally {
+      // After all operations done, force a session restore just in case
       await supabase.auth.setSession(originalSession);
       setLoading(false);
     }
