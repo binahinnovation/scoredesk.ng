@@ -105,6 +105,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          school_id: string | null
           school_name: string | null
           updated_at: string
         }
@@ -113,6 +114,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          school_id?: string | null
           school_name?: string | null
           updated_at?: string
         }
@@ -121,6 +123,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          school_id?: string | null
           school_name?: string | null
           updated_at?: string
         }
@@ -229,6 +232,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schools: {
+        Row: {
+          alias: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          alias?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          alias?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       scratch_cards: {
         Row: {
@@ -595,18 +622,21 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          school_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role: string
+          school_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: string
+          school_id?: string | null
           user_id?: string
         }
         Relationships: [

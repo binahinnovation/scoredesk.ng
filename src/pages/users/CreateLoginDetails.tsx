@@ -55,6 +55,7 @@ const CreateLoginDetails = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole | ''>('');
   const [schoolAlias, setSchoolAlias] = useState('');
   const [schoolName, setSchoolName] = useState('');
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [customSubject, setCustomSubject] = useState('');
   const [showCustomSubject, setShowCustomSubject] = useState(false);
   const [loginPreviews, setLoginPreviews] = useState<LoginPreview[]>([]);
@@ -72,24 +73,61 @@ const CreateLoginDetails = () => {
     setDebugLogs(prev => [...prev, logMessage]);
   };
 
-  // Load school info from user profile, setting alias and full name as before
+  // Load or assign schoolId and schoolName on mount
   useEffect(() => {
     const loadSchoolInfo = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('school_name')
-            .eq('id', user.id)
-            .single();
-          
-          if (profile?.school_name) {
-            setSchoolName(profile.school_name);
-            const alias = profile.school_name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_name,school_id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        let schoolIdValue = profile?.school_id ?? null;
+        let schoolNameValue = profile?.school_name ?? null;
+
+        // If profile doesn't have a schoolId, create a new school and update profile
+        if (!schoolIdValue) {
+          // Use school_name if set, else fallback to user's email prefix
+          const newSchoolName = schoolNameValue || (user.email ? user.email.split('@')[0] + " School" : "Unnamed School");
+          // Use a slugified alias
+          const alias = newSchoolName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '').substring(0, 32);
+
+          // Insert into schools table
+          const { data: newSchool, error: schoolError } = await supabase
+            .from('schools')
+            .insert({
+              name: newSchoolName,
+              alias,
+              created_by: user.id,
+            })
+            .select('id,name')
+            .maybeSingle();
+
+          if (schoolError || !newSchool?.id) {
             setSchoolAlias(alias);
+            setSchoolName(newSchoolName);
+            setSchoolId(null);
+            return;
           }
+
+          // Update profile with school_id and school_name
+          await supabase.from('profiles').update({
+            school_id: newSchool.id,
+            school_name: newSchool.name
+          }).eq('id', user.id);
+
+          schoolIdValue = newSchool.id;
+          schoolNameValue = newSchool.name;
         }
+
+        setSchoolId(schoolIdValue);
+        setSchoolName(schoolNameValue || "");
+        setSchoolAlias(schoolNameValue ? schoolNameValue.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') : "");
+
       } catch (error) {
         console.error('Error loading school info:', error);
       }
@@ -259,13 +297,13 @@ const CreateLoginDetails = () => {
 
       const createdUsers = [];
       let failedUsers = [];
-      
+
       addDebugLog(`Attempting to create ${loginPreviews.length} user accounts...`);
 
       for (const [index, preview] of loginPreviews.entries()) {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
-          // FIX: use full school name, not alias
+          // Assign both school_id and school_name to user
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -275,7 +313,8 @@ const CreateLoginDetails = () => {
                 role: preview.role,
                 subjects: preview.subjects,
                 classes: preview.classes,
-                school_name: schoolName, // <-- ALWAYS use the principal's schoolName
+                school_id: schoolId,    // <-- The unique id for the school
+                school_name: schoolName, // for human display
                 full_name: preview.username,
                 created_by: principalUserId
               }
@@ -293,10 +332,11 @@ const CreateLoginDetails = () => {
           if (authData.user) {
             addDebugLog(`Successfully created auth user: ${authData.user.id}`);
 
-            // Insert role
+            // Insert role, also with school_id
             const { error: roleError } = await supabase.from('user_roles').insert({
               user_id: authData.user.id,
-              role: preview.role
+              role: preview.role,
+              school_id: schoolId
             });
 
             if (roleError) {
@@ -304,6 +344,12 @@ const CreateLoginDetails = () => {
             } else {
               addDebugLog(`Successfully created role for user: ${authData.user.id}`);
             }
+
+            // Update profile with school_id and school_name (in case trigger misses)
+            await supabase.from('profiles').update({
+              school_id: schoolId,
+              school_name: schoolName
+            }).eq('id', authData.user.id);
 
             createdUsers.push(preview);
           } else {
@@ -357,7 +403,6 @@ const CreateLoginDetails = () => {
         variant: "destructive",
       });
     } finally {
-      // Final check to ensure the principal's session is active.
       await supabase.auth.setSession(originalSession);
       setLoading(false);
     }
