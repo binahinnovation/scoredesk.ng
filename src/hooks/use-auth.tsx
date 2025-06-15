@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
@@ -57,47 +56,24 @@ export function useAuth() {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      // Using RPC function to get user role
+      // Using RPC function to get user role, which is the single source of truth.
       const { data, error } = await supabase
         .rpc('get_user_role', { user_id_param: userId });
 
       if (error) {
         console.error('Error fetching user role:', error);
-        
-        // Check for super admin emails directly
-        const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-        
-        // Get user email from current user object
-        if (user?.email && superAdmins.includes(user.email)) {
-          setUserRole('Principal');
-          return;
-        }
-        
-        // Check for super admin flag in metadata
-        if (user?.user_metadata?.is_super_admin === true) {
-          setUserRole('Principal');
-          return;
-        }
-        
         setUserRole(null);
       } else if (data) {
         setUserRole(data as UserRole);
       }
     } catch (error) {
       console.error('Error in fetchUserRole:', error);
+      setUserRole(null);
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      // Special handling for super admin emails
-      const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-      if (superAdmins.includes(email)) {
-        // For demo purposes, we'll automatically assign the Principal role
-        // In a real application, you would validate this against a secure list
-        console.log('Logging in as super admin');
-      }
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

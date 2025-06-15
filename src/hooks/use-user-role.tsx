@@ -20,27 +20,18 @@ export function useUserRole() {
       }
 
       try {
-        // Using RPC function to get user role
+        // Using RPC function to get user role, which is the single source of truth.
         const { data, error } = await supabase
           .rpc('get_user_role', { user_id_param: user.id });
 
         if (error) {
-          console.error('Error fetching user role:', error);
-          
-          // Fallback for super admin emails
-          const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-          if (user.email && superAdmins.includes(user.email)) {
-            setUserRole('Principal' as UserRole);
-          } else if (user.user_metadata?.is_super_admin === true) {
-            setUserRole('Principal' as UserRole);
-          } else {
-            setUserRole(null);
-          }
-        } else if (data) {
-          setUserRole(data as UserRole);
+          throw error;
         }
+        
+        setUserRole(data as UserRole);
+
       } catch (error: any) {
-        console.error('Error in useUserRole hook:', error);
+        console.error('Error fetching user role:', error);
         toast({
           title: "Error fetching role",
           description: error.message || "Could not retrieve your role information",
@@ -58,15 +49,14 @@ export function useUserRole() {
   const hasPermission = useCallback((feature: string) => {
     if (!userRole) return false;
     
-    // Special case for super admins
-    const superAdmins = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com'];
-    if (user?.email && superAdmins.includes(user.email)) {
-      return true; // Super admin has access to everything
-    }
-    
-    // Check if user was marked as super admin during registration
-    if (user?.user_metadata?.is_super_admin === true) {
-      return true; // User was registered from /signup, grant super admin access
+    // Super admins have access to everything, overriding the permission matrix.
+    // This logic is now consistent with the database functions.
+    const superAdminEmails = ['deepmindfx01@gmail.com', 'aleeyuwada01@gmail.com', 'superadmin@scoredesk.com'];
+    const isSuperAdminByEmail = user?.email && superAdminEmails.includes(user.email);
+    const isSuperAdminByFlag = user?.user_metadata?.is_super_admin === true;
+
+    if (isSuperAdminByEmail || isSuperAdminByFlag) {
+      return true;
     }
     
     const permissionEntry = rolePermissionMatrix.find(p => p.name === feature);
