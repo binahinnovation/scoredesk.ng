@@ -20,16 +20,24 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // The crucial change is below:
   optimizeDeps: {
     include: [
+      // Required by other features
       "xlsx",
       "jspdf-autotable",
+    ],
+    exclude: [
+      "xlsx",
+      "jspdf",
+      "jspdf-autotable"
     ],
   },
   build: {
     rollupOptions: {
       external: [
         "xlsx",
+        "jspdf",
         "jspdf-autotable",
       ],
     },
