@@ -12,25 +12,16 @@ interface UserWithRole {
   id: string;
   user_id: string;
   role: string;
-  // Temporarily removing profiles to debug recursion issue
-  // profiles?: {
-  //   full_name: string;
-  //   school_name: string;
-  // } | null;
+  full_name: string | null;
+  school_name: string | null;
 }
 
 const ManageUsers = () => {
   const { data: usersData, loading, error, refetch } = useSupabaseQuery<UserWithRole[]>(
     async () => {
-      // Temporarily simplifying query to isolate recursion issue by removing the join with profiles.
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select(`
-          id,
-          user_id,
-          role
-        `);
-      return { data, error };
+      // Use the new, safe RPC function to fetch users, avoiding RLS recursion.
+      const { data, error } = await supabase.rpc('get_manageable_users');
+      return { data, error: error ? error.message : null };
     },
     []
   );
@@ -85,7 +76,7 @@ const ManageUsers = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name (showing User ID)</TableHead>
+                <TableHead>Name</TableHead>
                 <TableHead>School</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
@@ -97,10 +88,10 @@ const ManageUsers = () => {
                 users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      {user.user_id || 'N/A'}
+                      {user.full_name || user.user_id || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {'N/A'}
+                      {user.school_name || 'N/A'}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{user.role}</Badge>

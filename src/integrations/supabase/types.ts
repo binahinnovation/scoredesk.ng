@@ -628,6 +628,16 @@ export type Database = {
         Args: { admin_email: string; admin_password: string }
         Returns: Json
       }
+      get_manageable_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          role: string
+          full_name: string
+          school_name: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id_param: string }
         Returns: string
