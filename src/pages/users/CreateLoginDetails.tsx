@@ -305,8 +305,10 @@ const CreateLoginDetails = () => {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
           // Assign both school_id and school_name to user
 
+          // Extra debug: Log sign up user metadata parameters:
+          addDebugLog(`signUp metadata: username=${preview.username}, subjects=${(preview.subjects || []).join('|')}, classes=${(preview.classes || []).join('|')}, school_id=${schoolId}, school_name=${schoolName}, role=${preview.role}, full_name=${preview.username}, created_by=${principalUserId}`);
+
           // --- session isolation fix start ---
-          // Before signUp, always restore original session to try to stay in principal context
           await supabase.auth.setSession(originalSession);
 
           const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -330,16 +332,21 @@ const CreateLoginDetails = () => {
 
           await new Promise((res) => setTimeout(res, 200)); // Small delay to allow session switch
 
-          // --- Enhanced profile-id lookup: 10x retries, allow by username or email (case and whitespace insensitive) ---
+          // --- Enhanced profile-id lookup: 10x retries, with debug ---
           const findProfileId = async (): Promise<string | null> => {
             for (let attempt = 1; attempt <= 10; attempt++) {
               // By username (robust comparison)
-              const { data: profileByName } = await supabase
+              addDebugLog(`findProfileId: Attempt #${attempt} - looking for profile with username "${preview.username.trim()}"`);
+              const { data: profileByName, error: profileByNameErr } = await supabase
                 .from('profiles')
                 .select('id, full_name')
                 .ilike('full_name', preview.username.trim());
 
+              if (profileByNameErr) {
+                addDebugLog(`Supabase profileByName error: ${profileByNameErr.message}`);
+              }
               if (profileByName?.length) {
+                addDebugLog(`Supabase profileByName found: ${JSON.stringify(profileByName)}`);
                 // Try exact match on trimmed, lowercased
                 const match = profileByName.find(
                   (p: any) =>
@@ -347,26 +354,35 @@ const CreateLoginDetails = () => {
                     p.full_name.trim().toLowerCase() === preview.username.trim().toLowerCase()
                 );
                 if (match) {
-                  if (attempt > 1) addDebugLog(`Found user by username on retry #${attempt}: ${match.id}`);
+                  addDebugLog(`Matched user by username on retry #${attempt}: id=${match.id}`);
                   return match.id;
                 }
+              } else {
+                addDebugLog(`Supabase profileByName returned no rows on attempt #${attempt}`);
               }
 
               // By email (robust comparison)
-              const { data: profileByEmail } = await supabase
+              addDebugLog(`findProfileId: Attempt #${attempt} - looking for profile with email prefix "${preview.email.split('@')[0]}"`);
+              const { data: profileByEmail, error: profileByEmailErr } = await supabase
                 .from('profiles')
-                .select('id')
+                .select('id, full_name')
                 .ilike('full_name', preview.email.split('@')[0] + '%');
 
+              if (profileByEmailErr) {
+                addDebugLog(`Supabase profileByEmail error: ${profileByEmailErr.message}`);
+              }
               if (profileByEmail?.length) {
-                // The email prefix sometimes matches how full_name was set in legacy cases
-                if (attempt > 1) addDebugLog(`Found user by email pattern on retry #${attempt}: ${profileByEmail[0].id}`);
+                addDebugLog(`Supabase profileByEmail found: ${JSON.stringify(profileByEmail)}`);
+                addDebugLog(`Matched user by email pattern on retry #${attempt}: id=${profileByEmail[0].id}`);
                 return profileByEmail[0].id;
+              } else {
+                addDebugLog(`Supabase profileByEmail returned no rows on attempt #${attempt}`);
               }
 
               if (attempt === 1) addDebugLog('User not found immediately after signup, will retry...');
               await new Promise(res => setTimeout(res, 500));
             }
+            addDebugLog('All attempts to find profileId failed.');
             return null;
           };
 
