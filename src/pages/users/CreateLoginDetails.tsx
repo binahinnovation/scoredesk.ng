@@ -326,40 +326,33 @@ const CreateLoginDetails = () => {
             }
           });
 
-          // Restore the original session after EVERY signUp call, for every user created
+          // Restore the original session after EVERY signUp call
           await supabase.auth.setSession(originalSession);
 
           // Help Supabase process switching the session before next iteration (to avoid race conditions)
           await new Promise((res) => setTimeout(res, 200)); // 200ms delay
 
-          // --- NEW: Fetch userId from profiles table by email, since authData.user may not have the new user ---
-          let newUserId: string | null = null;
-          const { data: profileResult, error: profileErr } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', authData.user?.id ?? '') // Try by returned user id first, if any
-            .maybeSingle();
+          // --- NEW: Retry fetching profile id after signup up to 5x
+          const findProfileId = async (): Promise<string | null> => {
+            for (let attempt = 1; attempt <= 5; attempt++) {
+              // Try finding by username
+              const { data: profileByName, error: profileByNameErr } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('full_name', preview.username)
+                .maybeSingle();
 
-          if (profileResult && profileResult.id) {
-            newUserId = profileResult.id;
-          }
-
-          // If not found by user id, try to find by email (robust fallback)
-          if (!newUserId) {
-            const { data: byEmailProfile, error: byEmailErr } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('full_name', preview.username)
-              .maybeSingle();
-            if (byEmailProfile && byEmailProfile.id) {
-              newUserId = byEmailProfile.id;
+              if (profileByName?.id) {
+                if (attempt > 1) addDebugLog(`Found user on retry #${attempt}: ${profileByName.id}`);
+                return profileByName.id;
+              }
+              if (attempt === 1) addDebugLog('User not found immediately after signup, will retry...');
+              await new Promise(res => setTimeout(res, 500));
             }
-          }
+            return null;
+          };
 
-          // If still not found, try to resolve through the auth.users table
-          if (!newUserId) {
-            // Optionally, the code can try to fetch by other means here; skipping for brevity
-          }
+          let newUserId: string | null = await findProfileId();
 
           // Only assign role if we have a valid user ID
           if (authError) {
@@ -391,8 +384,8 @@ const CreateLoginDetails = () => {
 
             createdUsers.push(preview);
           } else {
-            addDebugLog(`No user id found for ${preview.email}, cannot assign role.`);
-            failedUsers.push({ preview, error: "No user id found after signup" });
+            addDebugLog(`No user id found for ${preview.email} after retries, cannot assign role.`);
+            failedUsers.push({ preview, error: "No user id found after signup and retries" });
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
