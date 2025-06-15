@@ -50,6 +50,13 @@ const ManageUsers = () => {
   const pagedUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   React.useEffect(() => { setPage(1); }, [roleTab]);
+
+  const handleExportExcel = async () => {
+    await exportUsersToExcel(filteredUsers, roleTab);
+  };
+  const handleExportPDF = async () => {
+    await exportUsersToPDF(filteredUsers, roleTab);
+  };
   
   if (loading) {
     return (
@@ -109,7 +116,7 @@ const ManageUsers = () => {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => exportUsersToExcel(filteredUsers, roleTab)}
+                    onClick={handleExportExcel}
                     disabled={filteredUsers.length === 0}
                   >
                     Export as Excel
@@ -117,7 +124,7 @@ const ManageUsers = () => {
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => exportUsersToPDF(filteredUsers, roleTab)}
+                    onClick={handleExportPDF}
                     disabled={filteredUsers.length === 0}
                   >
                     Export as PDF

@@ -1,11 +1,7 @@
 
-// @ts-ignore
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-// @ts-ignore
-import autoTable from "jspdf-autotable";
-
-export function exportUsersToExcel(users: any[], role: string) {
+export async function exportUsersToExcel(users: any[], role: string) {
+  // Dynamically import xlsx
+  const XLSX = await import("xlsx");
   const data = users.map(user => ({
     "Name": user.full_name || user.user_id || "N/A",
     "School": user.school_name || "N/A",
@@ -18,7 +14,13 @@ export function exportUsersToExcel(users: any[], role: string) {
   XLSX.writeFile(wb, `users_${role.replace(/\s+/g, "_").toLowerCase()}.xlsx`);
 }
 
-export function exportUsersToPDF(users: any[], role: string) {
+export async function exportUsersToPDF(users: any[], role: string) {
+  // Dynamically import jspdf and autotable
+  const jsPDFModule = await import("jspdf");
+  const autoTableModule = await import("jspdf-autotable");
+  const jsPDF = jsPDFModule.default;
+  const autoTable = autoTableModule.default || autoTableModule;
+
   const doc = new jsPDF();
   doc.text(`Users - ${role}`, 10, 10);
   const tableData = users.map(user => [
@@ -27,7 +29,7 @@ export function exportUsersToPDF(users: any[], role: string) {
     user.role,
     "Active"
   ]);
-  (autoTable as any)(doc, {
+  autoTable(doc, {
     startY: 20,
     head: [["Name", "School", "Role", "Status"]],
     body: tableData,
