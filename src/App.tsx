@@ -1,9 +1,10 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import React from "react"; // Add React import explicitly
+import React from "react";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -12,6 +13,7 @@ import MainLayout from "./components/layout/MainLayout";
 import { useAuth } from "./hooks/use-auth";
 import { useEffect } from "react";
 import { initStorage } from "./integrations/supabase/storage";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // New Pages
 import Dashboard from "./pages/Dashboard";
@@ -102,11 +104,13 @@ const App = () => {
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <StorageInitializer />
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppRoutes />
+            <AuthProvider>
+              <StorageInitializer />
+              <AppRoutes />
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
