@@ -204,16 +204,20 @@ const CreateLoginDetails = () => {
     setLoading(true);
     setError('');
     setDebugLogs([]);
+
+    const { data: { session: originalSession }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !originalSession) {
+      setError("Your session is invalid. Please refresh the page and log in again.");
+      addDebugLog("Failed to get original session: " + (sessionError?.message || "No session found"));
+      setLoading(false);
+      return;
+    }
     
     try {
       addDebugLog("Starting login creation process...");
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      addDebugLog(`Current user ID: ${user.id}`);
+      const principalUserId = originalSession.user.id;
+      addDebugLog(`Current user ID: ${principalUserId}`);
 
       // First ensure the classes and subjects exist in the database
       addDebugLog("Ensuring classes and subjects exist in database...");
@@ -229,7 +233,7 @@ const CreateLoginDetails = () => {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
           
-          // Create user account using Supabase client signup (instead of admin API)
+          // Create user account using Supabase client signup
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -241,10 +245,14 @@ const CreateLoginDetails = () => {
                 classes: preview.classes,
                 school_name: schoolName,
                 full_name: preview.username,
-                created_by: user.id
+                created_by: principalUserId
               }
             }
           });
+          
+          // IMPORTANT: Restore the principal's session immediately.
+          // This prevents the app from "logging in" as the new user.
+          await supabase.auth.setSession(originalSession);
 
           if (authError) {
             addDebugLog(`Auth error for ${preview.email}: ${authError.message}`);
@@ -255,7 +263,7 @@ const CreateLoginDetails = () => {
           if (authData.user) {
             addDebugLog(`Successfully created auth user: ${authData.user.id}`);
             
-            // Create user role
+            // With the principal's session restored, this RLS-protected insert will now succeed.
             const { error: roleError } = await supabase.from('user_roles').insert({
               user_id: authData.user.id,
               role: preview.role
@@ -267,8 +275,7 @@ const CreateLoginDetails = () => {
               addDebugLog(`Successfully created role for user: ${authData.user.id}`);
             }
             
-            // The profile is created by a trigger, so no need to insert manually.
-            // We've passed the necessary data (school_name, full_name) in the signUp options.
+            // The profile is created by a trigger.
 
             createdUsers.push(preview);
           } else {
@@ -281,8 +288,6 @@ const CreateLoginDetails = () => {
           failedUsers.push({ preview, error: errorMessage });
         }
       }
-
-      addDebugLog(`Creation complete. Success: ${createdUsers.length}, Failed: ${failedUsers.length}`);
 
       if (createdUsers.length > 0) {
         toast({
@@ -324,6 +329,8 @@ const CreateLoginDetails = () => {
         variant: "destructive",
       });
     } finally {
+      // Final check to ensure the principal's session is active.
+      await supabase.auth.setSession(originalSession);
       setLoading(false);
     }
   };
