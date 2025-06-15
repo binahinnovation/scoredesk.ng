@@ -303,14 +303,9 @@ const CreateLoginDetails = () => {
       for (const [index, preview] of loginPreviews.entries()) {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
-          // Assign both school_id and school_name to user
-
-          // Extra debug: Log sign up user metadata parameters:
           addDebugLog(`signUp metadata: username=${preview.username}, subjects=${(preview.subjects || []).join('|')}, classes=${(preview.classes || []).join('|')}, school_id=${schoolId}, school_name=${schoolName}, role=${preview.role}, full_name=${preview.username}, created_by=${principalUserId}`);
 
-          // --- session isolation fix start ---
           await supabase.auth.setSession(originalSession);
-
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -329,25 +324,19 @@ const CreateLoginDetails = () => {
           });
 
           await supabase.auth.setSession(originalSession);
-
-          await new Promise((res) => setTimeout(res, 200)); // Small delay to allow session switch
+          await new Promise((res) => setTimeout(res, 200));
 
           // --- Enhanced profile-id lookup: 10x retries, with debug ---
           const findProfileId = async (): Promise<string | null> => {
             for (let attempt = 1; attempt <= 10; attempt++) {
-              // By username (robust comparison)
               addDebugLog(`findProfileId: Attempt #${attempt} - looking for profile with username "${preview.username.trim()}"`);
               const { data: profileByName, error: profileByNameErr } = await supabase
                 .from('profiles')
                 .select('id, full_name')
                 .ilike('full_name', preview.username.trim());
-
-              if (profileByNameErr) {
-                addDebugLog(`Supabase profileByName error: ${profileByNameErr.message}`);
-              }
+              if (profileByNameErr) addDebugLog(`Supabase profileByName error: ${profileByNameErr.message}`);
               if (profileByName?.length) {
                 addDebugLog(`Supabase profileByName found: ${JSON.stringify(profileByName)}`);
-                // Try exact match on trimmed, lowercased
                 const match = profileByName.find(
                   (p: any) =>
                     p.full_name &&
@@ -360,17 +349,12 @@ const CreateLoginDetails = () => {
               } else {
                 addDebugLog(`Supabase profileByName returned no rows on attempt #${attempt}`);
               }
-
-              // By email (robust comparison)
               addDebugLog(`findProfileId: Attempt #${attempt} - looking for profile with email prefix "${preview.email.split('@')[0]}"`);
               const { data: profileByEmail, error: profileByEmailErr } = await supabase
                 .from('profiles')
                 .select('id, full_name')
                 .ilike('full_name', preview.email.split('@')[0] + '%');
-
-              if (profileByEmailErr) {
-                addDebugLog(`Supabase profileByEmail error: ${profileByEmailErr.message}`);
-              }
+              if (profileByEmailErr) addDebugLog(`Supabase profileByEmail error: ${profileByEmailErr.message}`);
               if (profileByEmail?.length) {
                 addDebugLog(`Supabase profileByEmail found: ${JSON.stringify(profileByEmail)}`);
                 addDebugLog(`Matched user by email pattern on retry #${attempt}: id=${profileByEmail[0].id}`);
@@ -378,7 +362,6 @@ const CreateLoginDetails = () => {
               } else {
                 addDebugLog(`Supabase profileByEmail returned no rows on attempt #${attempt}`);
               }
-
               if (attempt === 1) addDebugLog('User not found immediately after signup, will retry...');
               await new Promise(res => setTimeout(res, 500));
             }
@@ -418,8 +401,55 @@ const CreateLoginDetails = () => {
 
             createdUsers.push(preview);
           } else {
-            addDebugLog(`No user id found for ${preview.email} after retries, cannot assign role.`);
-            failedUsers.push({ preview, error: "No user id found after signup and retries" });
+            addDebugLog(`No user id found for ${preview.email} after retries, will manually insert profile/role.`);
+            // --- Manual fallback for missing profile ---
+            // Try to fetch user from auth.users API, since signUp always returns user object
+            let manualUserId = null;
+            if (authData?.user?.id) {
+              manualUserId = authData.user.id;
+              addDebugLog(`Manual fallback: got user id from authData: ${manualUserId}`);
+            } else {
+              // Try to fetch just in case
+              const { data: userSearch, error: userErr } = await supabase
+                .from('profiles')
+                .select('id')
+                .ilike('full_name', preview.username.trim())
+                .maybeSingle();
+              if (userSearch?.id) {
+                manualUserId = userSearch.id;
+                addDebugLog(`Manual fallback: found user id after extra ilike: ${manualUserId}`);
+              } else {
+                addDebugLog('Manual fallback: Could not determine user id; skipping profile and role creation.');
+                failedUsers.push({ preview, error: "Could not determine user id to insert profile/role" });
+                continue;
+              }
+            }
+            // Insert into profiles if not exists
+            addDebugLog(`Manual fallback: inserting into profiles for user id: ${manualUserId}`);
+            const { error: manualProfileError } = await supabase.from('profiles').insert({
+              id: manualUserId,
+              full_name: preview.username,
+              school_name: schoolName, // Use the schoolName from context
+              school_id: schoolId,
+            });
+            if (manualProfileError) {
+              addDebugLog(`Manual profile insert error: ${manualProfileError.message}`);
+            } else {
+              addDebugLog('Manual profile insert succeeded.');
+            }
+            // Insert into user_roles
+            addDebugLog(`Manual fallback: inserting into user_roles for user id: ${manualUserId}`);
+            const { error: manualRoleError } = await supabase.from('user_roles').insert({
+              user_id: manualUserId,
+              role: preview.role,
+              school_id: schoolId
+            });
+            if (manualRoleError) {
+              addDebugLog(`Manual user_role insert error: ${manualRoleError.message}`);
+            } else {
+              addDebugLog('Manual user_role insert succeeded.');
+              createdUsers.push(preview);
+            }
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
