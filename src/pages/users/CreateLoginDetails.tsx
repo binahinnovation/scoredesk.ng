@@ -72,7 +72,7 @@ const CreateLoginDetails = () => {
     setDebugLogs(prev => [...prev, logMessage]);
   };
 
-  // Load school alias from user profile
+  // Load school info from user profile, setting alias and full name as before
   useEffect(() => {
     const loadSchoolInfo = async () => {
       try {
@@ -86,7 +86,6 @@ const CreateLoginDetails = () => {
           
           if (profile?.school_name) {
             setSchoolName(profile.school_name);
-            // Convert school name to alias (lowercase, remove spaces)
             const alias = profile.school_name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
             setSchoolAlias(alias);
           }
@@ -124,10 +123,6 @@ const CreateLoginDetails = () => {
     return username;
   };
 
-  // --- Fix: Always use FULL SCHOOL NAME, not the alias for all user creations ---
-  // Remove schoolAlias from all data seen by new accounts in their profile
-
-  // In generatePreviews(), update the email to still use the alias, but use the full school name for everything else
   const generatePreviews = () => {
     if (!selectedRole || !schoolAlias.trim()) {
       toast({
@@ -229,7 +224,7 @@ const CreateLoginDetails = () => {
       .substring(0, 4);
   };
 
-  // --- MAIN FIX APPLIED HERE: In createLogins, always set full schoolName ---
+  // --- FIX: always use full schoolName, not alias, in createLogins ---
   const createLogins = async () => {
     if (loginPreviews.length === 0) {
       const errorMsg = "No login previews to create. Please generate login previews first.";
@@ -270,7 +265,7 @@ const CreateLoginDetails = () => {
       for (const [index, preview] of loginPreviews.entries()) {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
-          // --- CRITICAL: Set school_name to full `schoolName` for the new user ---
+          // FIX: use full school name, not alias
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -280,7 +275,7 @@ const CreateLoginDetails = () => {
                 role: preview.role,
                 subjects: preview.subjects,
                 classes: preview.classes,
-                school_name: schoolName, // <-- FULL SCHOOL NAME ONLY
+                school_name: schoolName, // <-- ALWAYS use the principal's schoolName
                 full_name: preview.username,
                 created_by: principalUserId
               }
