@@ -1,6 +1,8 @@
 
+// @ts-ignore
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
+// @ts-ignore
 import autoTable from "jspdf-autotable";
 
 export function exportUsersToExcel(users: any[], role: string) {
