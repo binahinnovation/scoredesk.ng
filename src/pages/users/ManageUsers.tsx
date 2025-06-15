@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,25 +12,23 @@ interface UserWithRole {
   id: string;
   user_id: string;
   role: string;
-  profiles?: {
-    full_name: string;
-    school_name: string;
-  } | null;
+  // Temporarily removing profiles to debug recursion issue
+  // profiles?: {
+  //   full_name: string;
+  //   school_name: string;
+  // } | null;
 }
 
 const ManageUsers = () => {
   const { data: usersData, loading, error, refetch } = useSupabaseQuery<UserWithRole[]>(
     async () => {
+      // Temporarily simplifying query to isolate recursion issue by removing the join with profiles.
       const { data, error } = await supabase
         .from('user_roles')
         .select(`
           id,
           user_id,
-          role,
-          profiles!user_roles_user_id_fkey (
-            full_name,
-            school_name
-          )
+          role
         `);
       return { data, error };
     },
@@ -88,7 +85,7 @@ const ManageUsers = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Name (showing User ID)</TableHead>
                 <TableHead>School</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
@@ -100,10 +97,10 @@ const ManageUsers = () => {
                 users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      {user.profiles?.full_name || 'N/A'}
+                      {user.user_id || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {user.profiles?.school_name || 'N/A'}
+                      {'N/A'}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{user.role}</Badge>
