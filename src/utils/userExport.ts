@@ -1,7 +1,7 @@
 
 export async function exportUsersToExcel(users: any[], role: string) {
-  // Dynamically import xlsx
-  const XLSX = await import("xlsx");
+  // @ts-ignore: Vite/TS sometimes can't find module types, but runtime import is fine.
+  const XLSX = (await import("xlsx")) as any;
   const data = users.map(user => ({
     "Name": user.full_name || user.user_id || "N/A",
     "School": user.school_name || "N/A",
@@ -15,11 +15,14 @@ export async function exportUsersToExcel(users: any[], role: string) {
 }
 
 export async function exportUsersToPDF(users: any[], role: string) {
-  // Dynamically import jspdf and autotable
+  // @ts-ignore: For autotable, as ESM interop is inconsistent
   const jsPDFModule = await import("jspdf");
+  // @ts-ignore: For autotable, as ESM interop is inconsistent
   const autoTableModule = await import("jspdf-autotable");
+
   const jsPDF = jsPDFModule.default;
-  const autoTable = autoTableModule.default || autoTableModule;
+  // Sometimes autotable is a callable function, sometimes under .default:
+  const autoTable = (autoTableModule.default || autoTableModule) as Function;
 
   const doc = new jsPDF();
   doc.text(`Users - ${role}`, 10, 10);
