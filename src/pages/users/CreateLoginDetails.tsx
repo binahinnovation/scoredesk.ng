@@ -326,26 +326,44 @@ const CreateLoginDetails = () => {
             }
           });
 
-          // Restore the original session after EVERY signUp call
           await supabase.auth.setSession(originalSession);
 
-          // Help Supabase process switching the session before next iteration (to avoid race conditions)
-          await new Promise((res) => setTimeout(res, 200)); // 200ms delay
+          await new Promise((res) => setTimeout(res, 200)); // Small delay to allow session switch
 
-          // --- NEW: Retry fetching profile id after signup up to 5x
+          // --- Enhanced profile-id lookup: 10x retries, allow by username or email (case and whitespace insensitive) ---
           const findProfileId = async (): Promise<string | null> => {
-            for (let attempt = 1; attempt <= 5; attempt++) {
-              // Try finding by username
-              const { data: profileByName, error: profileByNameErr } = await supabase
+            for (let attempt = 1; attempt <= 10; attempt++) {
+              // By username (robust comparison)
+              const { data: profileByName } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .ilike('full_name', preview.username.trim());
+
+              if (profileByName?.length) {
+                // Try exact match on trimmed, lowercased
+                const match = profileByName.find(
+                  (p: any) =>
+                    p.full_name &&
+                    p.full_name.trim().toLowerCase() === preview.username.trim().toLowerCase()
+                );
+                if (match) {
+                  if (attempt > 1) addDebugLog(`Found user by username on retry #${attempt}: ${match.id}`);
+                  return match.id;
+                }
+              }
+
+              // By email (robust comparison)
+              const { data: profileByEmail } = await supabase
                 .from('profiles')
                 .select('id')
-                .eq('full_name', preview.username)
-                .maybeSingle();
+                .ilike('full_name', preview.email.split('@')[0] + '%');
 
-              if (profileByName?.id) {
-                if (attempt > 1) addDebugLog(`Found user on retry #${attempt}: ${profileByName.id}`);
-                return profileByName.id;
+              if (profileByEmail?.length) {
+                // The email prefix sometimes matches how full_name was set in legacy cases
+                if (attempt > 1) addDebugLog(`Found user by email pattern on retry #${attempt}: ${profileByEmail[0].id}`);
+                return profileByEmail[0].id;
               }
+
               if (attempt === 1) addDebugLog('User not found immediately after signup, will retry...');
               await new Promise(res => setTimeout(res, 500));
             }
