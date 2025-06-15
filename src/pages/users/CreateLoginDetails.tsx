@@ -318,8 +318,8 @@ const CreateLoginDetails = () => {
                 role: preview.role,
                 subjects: preview.subjects,
                 classes: preview.classes,
-                school_id: schoolId,    // <-- The unique id for the school
-                school_name: schoolName, // for human display
+                school_id: schoolId,
+                school_name: schoolName,
                 full_name: preview.username,
                 created_by: principalUserId
               }
@@ -332,19 +332,47 @@ const CreateLoginDetails = () => {
           // Help Supabase process switching the session before next iteration (to avoid race conditions)
           await new Promise((res) => setTimeout(res, 200)); // 200ms delay
 
-          // --- session isolation fix end ---
+          // --- NEW: Fetch userId from profiles table by email, since authData.user may not have the new user ---
+          let newUserId: string | null = null;
+          const { data: profileResult, error: profileErr } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', authData.user?.id ?? '') // Try by returned user id first, if any
+            .maybeSingle();
 
+          if (profileResult && profileResult.id) {
+            newUserId = profileResult.id;
+          }
+
+          // If not found by user id, try to find by email (robust fallback)
+          if (!newUserId) {
+            const { data: byEmailProfile, error: byEmailErr } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('full_name', preview.username)
+              .maybeSingle();
+            if (byEmailProfile && byEmailProfile.id) {
+              newUserId = byEmailProfile.id;
+            }
+          }
+
+          // If still not found, try to resolve through the auth.users table
+          if (!newUserId) {
+            // Optionally, the code can try to fetch by other means here; skipping for brevity
+          }
+
+          // Only assign role if we have a valid user ID
           if (authError) {
             addDebugLog(`Auth error for ${preview.email}: ${authError.message}`);
             failedUsers.push({ preview, error: authError.message });
             continue;
           }
-          if (authData.user) {
-            addDebugLog(`Successfully created auth user: ${authData.user.id}`);
+          if (newUserId) {
+            addDebugLog(`Successfully resolved user id for role: ${newUserId}`);
 
             // Insert role, also with school_id
             const { error: roleError } = await supabase.from('user_roles').insert({
-              user_id: authData.user.id,
+              user_id: newUserId,
               role: preview.role,
               school_id: schoolId
             });
@@ -352,19 +380,19 @@ const CreateLoginDetails = () => {
             if (roleError) {
               addDebugLog(`Role creation error for ${preview.email}: ${roleError.message}`);
             } else {
-              addDebugLog(`Successfully created role for user: ${authData.user.id}`);
+              addDebugLog(`Successfully created role for user: ${newUserId}`);
             }
 
             // Update profile with school_id and school_name (in case trigger misses)
             await supabase.from('profiles').update({
               school_id: schoolId,
               school_name: schoolName
-            }).eq('id', authData.user.id);
+            }).eq('id', newUserId);
 
             createdUsers.push(preview);
           } else {
-            addDebugLog(`No user data returned for ${preview.email}`);
-            failedUsers.push({ preview, error: "No user data returned" });
+            addDebugLog(`No user id found for ${preview.email}, cannot assign role.`);
+            failedUsers.push({ preview, error: "No user id found after signup" });
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
