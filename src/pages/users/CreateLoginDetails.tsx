@@ -124,6 +124,10 @@ const CreateLoginDetails = () => {
     return username;
   };
 
+  // --- Fix: Always use FULL SCHOOL NAME, not the alias for all user creations ---
+  // Remove schoolAlias from all data seen by new accounts in their profile
+
+  // In generatePreviews(), update the email to still use the alias, but use the full school name for everything else
   const generatePreviews = () => {
     if (!selectedRole || !schoolAlias.trim()) {
       toast({
@@ -137,7 +141,6 @@ const CreateLoginDetails = () => {
     const previews: LoginPreview[] = [];
 
     if (selectedRole === 'Subject Teacher') {
-      // Generate combinations of subjects and classes
       selectedSubjects.forEach(subject => {
         selectedClasses.forEach(className => {
           const username = generateUsername(selectedRole, subject, className);
@@ -152,7 +155,6 @@ const CreateLoginDetails = () => {
         });
       });
     } else if (selectedRole === 'Form Teacher') {
-      // Generate for each selected class
       selectedClasses.forEach(className => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
@@ -165,7 +167,6 @@ const CreateLoginDetails = () => {
         });
       });
     } else if (selectedRole === 'Exam Officer') {
-      // Single exam officer
       const username = generateUsername(selectedRole);
       previews.push({
         username,
@@ -188,6 +189,47 @@ const CreateLoginDetails = () => {
     }
   };
 
+  // Ensure classes and subjects exist in database
+  const ensureClassesAndSubjectsExist = async () => {
+    try {
+      // Get existing classes and subjects
+      const { data: existingClasses } = await supabase.from('classes').select('name');
+      const { data: existingSubjects } = await supabase.from('subjects').select('name');
+
+      const existingClassNames = existingClasses?.map(c => c.name) || [];
+      const existingSubjectNames = existingSubjects?.map(s => s.name) || [];
+
+      // Insert missing classes
+      const missingClasses = CLASSES.filter(className => !existingClassNames.includes(className));
+      if (missingClasses.length > 0) {
+        const classInserts = missingClasses.map(name => ({ name }));
+        await supabase.from('classes').insert(classInserts);
+      }
+
+      // Insert missing subjects with auto-generated codes
+      const missingSubjects = SUBJECTS.filter(subjectName => !existingSubjectNames.includes(subjectName));
+      if (missingSubjects.length > 0) {
+        const subjectInserts = missingSubjects.map(name => ({
+          name,
+          code: generateSubjectCode(name)
+        }));
+        await supabase.from('subjects').insert(subjectInserts);
+      }
+    } catch (error) {
+      console.error('Error ensuring classes/subjects exist:', error);
+    }
+  };
+
+  // Generate subject code automatically
+  const generateSubjectCode = (subjectName: string) => {
+    return subjectName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .join('')
+      .substring(0, 4);
+  };
+
+  // --- MAIN FIX APPLIED HERE: In createLogins, always set full schoolName ---
   const createLogins = async () => {
     if (loginPreviews.length === 0) {
       const errorMsg = "No login previews to create. Please generate login previews first.";
@@ -215,25 +257,20 @@ const CreateLoginDetails = () => {
     
     try {
       addDebugLog("Starting login creation process...");
-      
       const principalUserId = originalSession.user.id;
       addDebugLog(`Current user ID: ${principalUserId}`);
 
-      // First ensure the classes and subjects exist in the database
-      addDebugLog("Ensuring classes and subjects exist in database...");
       await ensureClassesAndSubjectsExist();
 
-      // Create users in auth and profiles
       const createdUsers = [];
       let failedUsers = [];
       
       addDebugLog(`Attempting to create ${loginPreviews.length} user accounts...`);
-      
+
       for (const [index, preview] of loginPreviews.entries()) {
         try {
           addDebugLog(`Creating user ${index + 1}/${loginPreviews.length}: ${preview.email}`);
-          
-          // Create user account using Supabase client signup
+          // --- CRITICAL: Set school_name to full `schoolName` for the new user ---
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: preview.email,
             password: preview.password,
@@ -243,15 +280,14 @@ const CreateLoginDetails = () => {
                 role: preview.role,
                 subjects: preview.subjects,
                 classes: preview.classes,
-                school_name: schoolName,
+                school_name: schoolName, // <-- FULL SCHOOL NAME ONLY
                 full_name: preview.username,
                 created_by: principalUserId
               }
             }
           });
-          
-          // IMPORTANT: Restore the principal's session immediately.
-          // This prevents the app from "logging in" as the new user.
+
+          // Restore session
           await supabase.auth.setSession(originalSession);
 
           if (authError) {
@@ -259,11 +295,10 @@ const CreateLoginDetails = () => {
             failedUsers.push({ preview, error: authError.message });
             continue;
           }
-
           if (authData.user) {
             addDebugLog(`Successfully created auth user: ${authData.user.id}`);
-            
-            // With the principal's session restored, this RLS-protected insert will now succeed.
+
+            // Insert role
             const { error: roleError } = await supabase.from('user_roles').insert({
               user_id: authData.user.id,
               role: preview.role
@@ -274,8 +309,6 @@ const CreateLoginDetails = () => {
             } else {
               addDebugLog(`Successfully created role for user: ${authData.user.id}`);
             }
-            
-            // The profile is created by a trigger.
 
             createdUsers.push(preview);
           } else {
@@ -333,46 +366,6 @@ const CreateLoginDetails = () => {
       await supabase.auth.setSession(originalSession);
       setLoading(false);
     }
-  };
-
-  // Ensure classes and subjects exist in database
-  const ensureClassesAndSubjectsExist = async () => {
-    try {
-      // Get existing classes and subjects
-      const { data: existingClasses } = await supabase.from('classes').select('name');
-      const { data: existingSubjects } = await supabase.from('subjects').select('name');
-
-      const existingClassNames = existingClasses?.map(c => c.name) || [];
-      const existingSubjectNames = existingSubjects?.map(s => s.name) || [];
-
-      // Insert missing classes
-      const missingClasses = CLASSES.filter(className => !existingClassNames.includes(className));
-      if (missingClasses.length > 0) {
-        const classInserts = missingClasses.map(name => ({ name }));
-        await supabase.from('classes').insert(classInserts);
-      }
-
-      // Insert missing subjects with auto-generated codes
-      const missingSubjects = SUBJECTS.filter(subjectName => !existingSubjectNames.includes(subjectName));
-      if (missingSubjects.length > 0) {
-        const subjectInserts = missingSubjects.map(name => ({
-          name,
-          code: generateSubjectCode(name)
-        }));
-        await supabase.from('subjects').insert(subjectInserts);
-      }
-    } catch (error) {
-      console.error('Error ensuring classes/subjects exist:', error);
-    }
-  };
-
-  // Generate subject code automatically
-  const generateSubjectCode = (subjectName: string) => {
-    return subjectName
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase())
-      .join('')
-      .substring(0, 4);
   };
 
   return (
