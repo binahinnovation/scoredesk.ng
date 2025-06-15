@@ -632,6 +632,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      is_current_user_principal: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_principal: {
         Args: Record<PropertyKey, never>
         Returns: boolean
