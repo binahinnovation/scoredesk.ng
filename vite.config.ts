@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -20,26 +19,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // The crucial change is below:
   optimizeDeps: {
     include: [
-      // Required by other features
       "xlsx",
       "jspdf-autotable",
     ],
-    exclude: [
-      "xlsx",
-      "jspdf",
-      "jspdf-autotable"
-    ],
-  },
-  build: {
-    rollupOptions: {
-      external: [
-        "xlsx",
-        "jspdf",
-        "jspdf-autotable",
-      ],
-    },
   },
 }));
