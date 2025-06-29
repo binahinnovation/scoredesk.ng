@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,10 +36,14 @@ import TermManagement from "./pages/settings/TermManagement";
 // Create a new client
 const queryClient = new QueryClient();
 
-// Initialize storage buckets
+// Initialize storage buckets with error handling
 const StorageInitializer = () => {
   useEffect(() => {
-    initStorage().catch(console.error);
+    // Initialize storage but don't block the app if it fails
+    initStorage().catch((error) => {
+      console.error("Storage initialization failed:", error);
+      // App continues to work without storage features
+    });
   }, []);
   
   return null;
