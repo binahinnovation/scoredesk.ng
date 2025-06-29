@@ -36,14 +36,18 @@ import TermManagement from "./pages/settings/TermManagement";
 // Create a new client
 const queryClient = new QueryClient();
 
-// Initialize storage buckets with error handling
+// Initialize storage buckets with improved error handling
 const StorageInitializer = () => {
   useEffect(() => {
-    // Initialize storage but don't block the app if it fails
-    initStorage().catch((error) => {
-      console.error("Storage initialization failed:", error);
-      // App continues to work without storage features
-    });
+    // Initialize storage in the background without blocking the app
+    // Use a slight delay to allow the app to render first
+    const timer = setTimeout(() => {
+      initStorage().catch(() => {
+        // Silently handle failures - storage is not critical for app functionality
+      });
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
   
   return null;

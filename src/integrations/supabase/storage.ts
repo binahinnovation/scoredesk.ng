@@ -9,13 +9,17 @@ export const createAvatarBucket = async () => {
     });
     
     if (error) {
-      console.error("Error creating avatars bucket:", error);
+      // Don't log errors for buckets that already exist
+      if (error.message?.includes('already exists')) {
+        return true;
+      }
+      console.warn("Could not create avatars bucket:", error.message);
       return false;
     }
     
     return true;
   } catch (error) {
-    console.error("Network error creating avatars bucket:", error);
+    console.warn("Storage service unavailable - continuing without storage features");
     return false;
   }
 };
@@ -25,31 +29,41 @@ export const getBucketExists = async (name: string) => {
     const { data, error } = await supabase.storage.listBuckets();
     
     if (error) {
-      console.error("Error listing buckets:", error);
+      console.warn("Could not check bucket existence:", error.message);
       return false;
     }
     
     return data.some(bucket => bucket.name === name);
   } catch (error) {
-    console.error("Network error listing buckets:", error);
+    console.warn("Storage service unavailable - assuming bucket does not exist");
     return false;
   }
 };
 
 export const initStorage = async () => {
   try {
-    const avatarBucketExists = await getBucketExists("avatars");
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Storage initialization timeout')), 5000);
+    });
     
-    if (!avatarBucketExists) {
-      const created = await createAvatarBucket();
-      if (created) {
-        console.log("Created avatars bucket");
+    const initPromise = async () => {
+      const avatarBucketExists = await getBucketExists("avatars");
+      
+      if (!avatarBucketExists) {
+        const created = await createAvatarBucket();
+        if (created) {
+          console.log("Storage initialized successfully");
+        }
       } else {
-        console.warn("Failed to create avatars bucket - storage features may be limited");
+        console.log("Storage already initialized");
       }
-    }
+    };
+    
+    await Promise.race([initPromise(), timeoutPromise]);
   } catch (error) {
-    console.error("Failed to initialize storage:", error);
-    console.warn("Storage initialization failed - continuing without storage features");
+    // Silently handle storage initialization failures
+    // The app should continue to work without storage features
+    console.warn("Storage initialization skipped - app will continue without storage features");
   }
 };
