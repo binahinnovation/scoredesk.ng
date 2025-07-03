@@ -12,6 +12,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { RoleLabel } from "@/components/RoleLabel";
 import { UserStatusBadge } from "@/components/UserStatusBadge";
 import { exportUsersToExcel, exportUsersToPDF } from "@/utils/userExport";
+import { RoleAssignmentDialog } from "@/components/RoleAssignmentDialog";
 
 interface UserWithRole {
   id: string;
@@ -41,6 +42,9 @@ const ManageUsers = () => {
   );
   const users = usersData || [];
   const [roleTab, setRoleTab] = React.useState(ROLES[0]);
+  const [selectedUser, setSelectedUser] = React.useState<UserWithRole | null>(null);
+  const [showRoleDialog, setShowRoleDialog] = React.useState(false);
+  
   const filteredUsers = users.filter(u => u.role === roleTab ||
     (roleTab === "No Role Assigned" && (!ROLES.includes(u.role)))
   );
@@ -56,6 +60,15 @@ const ManageUsers = () => {
   };
   const handleExportPDF = async () => {
     await exportUsersToPDF(filteredUsers, roleTab);
+  };
+
+  const handleAssignRole = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setShowRoleDialog(true);
+  };
+
+  const handleRoleUpdated = () => {
+    refetch();
   };
   
   if (loading) {
@@ -158,13 +171,17 @@ const ManageUsers = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleAssignRole(user)}
+                              >
+                                <Shield className="h-4 w-4 mr-1" />
+                                Assign Role
+                              </Button>
                               <Button variant="ghost" size="sm">
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <Shield className="h-4 w-4 mr-1" />
-                                Permissions
                               </Button>
                               <Button variant="ghost" size="sm">
                                 <Trash2 className="h-4 w-4 mr-1" />
@@ -218,6 +235,13 @@ const ManageUsers = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <RoleAssignmentDialog
+        open={showRoleDialog}
+        onOpenChange={setShowRoleDialog}
+        user={selectedUser}
+        onRoleUpdated={handleRoleUpdated}
+      />
     </div>
   );
 };

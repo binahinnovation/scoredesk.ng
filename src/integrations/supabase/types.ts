@@ -176,6 +176,7 @@ export type Database = {
           created_at: string
           grade: string | null
           id: string
+          is_approved: boolean
           max_score: number
           remarks: string | null
           school_id: string | null
@@ -194,6 +195,7 @@ export type Database = {
           created_at?: string
           grade?: string | null
           id?: string
+          is_approved?: boolean
           max_score?: number
           remarks?: string | null
           school_id?: string | null
@@ -212,6 +214,7 @@ export type Database = {
           created_at?: string
           grade?: string | null
           id?: string
+          is_approved?: boolean
           max_score?: number
           remarks?: string | null
           school_id?: string | null
@@ -302,6 +305,69 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      scratch_cards: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          pin: string
+          price: number
+          revenue_generated: number
+          school_id: string | null
+          serial_number: string
+          status: string
+          term_id: string | null
+          updated_at: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          pin: string
+          price?: number
+          revenue_generated?: number
+          school_id?: string | null
+          serial_number: string
+          status?: string
+          term_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          pin?: string
+          price?: number
+          revenue_generated?: number
+          school_id?: string | null
+          serial_number?: string
+          status?: string
+          term_id?: string | null
+          updated_at?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scratch_cards_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scratch_cards_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       settings: {
         Row: {

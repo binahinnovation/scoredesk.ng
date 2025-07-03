@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useUserRole } from "@/hooks/use-user-role";
 import { 
   BarChart3, 
   Users, 
@@ -27,6 +28,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Sidebar({ className, open, setOpen }: SidebarProps) {
+  const { hasPermission } = useUserRole();
+  
   return (
     <div 
       className={cn(
@@ -75,62 +78,68 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                   )}
                 </NavLink>
                 
-                <NavLink to="/users">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Users className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>User Management</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("User Management") && (
+                  <NavLink to="/users">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Users className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>User Management</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/students">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <User className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Student Management</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Student Management") && (
+                  <NavLink to="/students">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <User className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Student Management</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/classes">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Layers className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Class & Subject</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Class/Subject Setup") && (
+                  <NavLink to="/classes">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Layers className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Class & Subject</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
               </div>
             </div>
             
@@ -142,81 +151,89 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                 Academic
               </h2>
               <div className="space-y-1">
-                <NavLink to="/results/entry">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <FilePen className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Result Entry</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Result Upload") && (
+                  <NavLink to="/results/entry">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <FilePen className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Result Entry</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/results/approval">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Lock className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Result Approval</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Result Approval") && (
+                  <NavLink to="/results/approval">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Lock className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Result Approval</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/ranking">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <BarChart3 className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Class Ranking</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Position & Ranking") && (
+                  <NavLink to="/ranking">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <BarChart3 className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Class Ranking</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/reportcards">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Report Card Designer</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Report Card Designer") && (
+                  <NavLink to="/reportcards">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Report Card Designer</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
               </div>
             </div>
 
@@ -228,81 +245,89 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                 Administration
               </h2>
               <div className="space-y-1">
-                <NavLink to="/branding">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Palette className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>School Branding</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("School Branding") && (
+                  <NavLink to="/branding">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Palette className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>School Branding</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/scratchcards">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Key className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Scratch Cards</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Scratch Card Generator") && (
+                  <NavLink to="/scratchcards">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Key className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Scratch Cards</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/analytics">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <ChartBar className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Analytics</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Analytics Dashboard") && (
+                  <NavLink to="/analytics">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <ChartBar className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Analytics</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
 
-                <NavLink to="/settings">
-                  {({ isActive }) => (
-                    <Button
-                      variant={isActive ? "secondary" : "ghost"}
-                      className={cn(
-                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
-                        isActive && "bg-emerald-800 text-white",
-                        !open && "px-0 justify-center"
-                      )}
-                      size="sm"
-                    >
-                      <Settings className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
-                      <span className={cn("transition-all duration-300", 
-                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
-                      )}>Settings</span>
-                    </Button>
-                  )}
-                </NavLink>
+{hasPermission("Settings") && (
+                  <NavLink to="/settings">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Settings className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Settings</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
               </div>
             </div>
 
