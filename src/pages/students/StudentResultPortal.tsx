@@ -68,12 +68,30 @@ const StudentResultPortal = () => {
 
       const termId = terms[0].id;
 
-      // Call the database function to use scratch card and get results
-      const { data, error } = await supabase.rpc('use_scratch_card_for_results', {
-        p_pin: pin,
-        p_student_id: studentId,
-        p_term_id: termId
-      });
+      // For now, just verify the scratch card exists and is valid
+      const { data: scratchCard, error: cardError } = await supabase
+        .from('scratch_cards')
+        .select('*')
+        .eq('pin', pin)
+        .eq('status', 'Active')
+        .single();
+
+      if (cardError || !scratchCard) {
+        toast({
+          title: "Invalid PIN",
+          description: "The PIN you entered is invalid or has already been used.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // For now, fetch results directly (simplified version)
+      const { data, error } = await supabase
+        .from('results')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('term_id', termId)
+        .eq('is_approved', true);
 
       if (error) {
         console.error('Error calling function:', error);

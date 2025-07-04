@@ -26,9 +26,9 @@ interface Student {
   email?: string;
   phone?: string;
   address?: string;
-  parent_name?: string;
-  parent_phone?: string;
-  parent_email?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  guardian_email?: string;
   admission_date?: string;
   status: string;
   classes?: { name: string };
@@ -59,9 +59,9 @@ export default function StudentManagement() {
     email: '',
     phone: '',
     address: '',
-    parent_name: '',
-    parent_phone: '',
-    parent_email: '',
+    guardian_name: '',
+    guardian_phone: '',
+    guardian_email: '',
     status: 'Active'
   });
 
@@ -191,9 +191,9 @@ export default function StudentManagement() {
       email: '',
       phone: '',
       address: '',
-      parent_name: '',
-      parent_phone: '',
-      parent_email: '',
+      guardian_name: '',
+      guardian_phone: '',
+      guardian_email: '',
       status: 'Active'
     });
     setEditingStudent(null);
@@ -217,9 +217,9 @@ export default function StudentManagement() {
       email: student.email || '',
       phone: student.phone || '',
       address: student.address || '',
-      parent_name: student.parent_name || '',
-      parent_phone: student.parent_phone || '',
-      parent_email: student.parent_email || '',
+      guardian_name: student.guardian_name || '',
+      guardian_phone: student.guardian_phone || '',
+      guardian_email: student.guardian_email || '',
       status: student.status
     });
     setIsDialogOpen(true);
@@ -267,7 +267,7 @@ export default function StudentManagement() {
     const selectedClassStudents = selectedClass === 'all' ? filteredStudents : 
       filteredStudents.filter(s => s.class_id === selectedClass);
     
-    const headers = ['Student ID', 'Name', 'Class', 'Gender', 'Email', 'Phone', 'Parent Name', 'Parent Phone', 'Status'];
+    const headers = ['Student ID', 'Name', 'Class', 'Gender', 'Email', 'Phone', 'Guardian Name', 'Guardian Phone', 'Status'];
     const csvData = [
       headers.join(','),
       ...selectedClassStudents.map(student => [
@@ -277,8 +277,8 @@ export default function StudentManagement() {
         student.gender || 'N/A',
         student.email || '',
         student.phone || '',
-        `"${student.parent_name || ''}"`,
-        student.parent_phone || '',
+        `"${student.guardian_name || ''}"`,
+        student.guardian_phone || '',
         student.status
       ].join(','))
     ].join('\n');
@@ -333,7 +333,7 @@ export default function StudentManagement() {
                   <th>Class</th>
                   <th>Gender</th>
                   <th>Phone</th>
-                  <th>Parent Name</th>
+                  <th>Guardian Name</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -346,7 +346,7 @@ export default function StudentManagement() {
                     <td>${student.classes?.name || 'No Class'}</td>
                     <td>${student.gender || 'N/A'}</td>
                     <td>${student.phone || 'N/A'}</td>
-                    <td>${student.parent_name || 'N/A'}</td>
+                    <td>${student.guardian_name || 'N/A'}</td>
                     <td>${student.status}</td>
                   </tr>
                 `).join('')}
@@ -521,30 +521,30 @@ export default function StudentManagement() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="parent_name">Parent Name</Label>
+                    <Label htmlFor="guardian_name">Guardian Name</Label>
                     <Input
-                      id="parent_name"
-                      value={formData.parent_name}
-                      onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                      id="guardian_name"
+                      value={formData.guardian_name}
+                      onChange={(e) => setFormData({ ...formData, guardian_name: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="parent_phone">Parent Phone</Label>
+                    <Label htmlFor="guardian_phone">Guardian Phone</Label>
                     <Input
-                      id="parent_phone"
-                      value={formData.parent_phone}
-                      onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+                      id="guardian_phone"
+                      value={formData.guardian_phone}
+                      onChange={(e) => setFormData({ ...formData, guardian_phone: e.target.value })}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="parent_email">Parent Email</Label>
+                  <Label htmlFor="guardian_email">Guardian Email</Label>
                   <Input
-                    id="parent_email"
+                    id="guardian_email"
                     type="email"
-                    value={formData.parent_email}
-                    onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
+                    value={formData.guardian_email}
+                    onChange={(e) => setFormData({ ...formData, guardian_email: e.target.value })}
                   />
                 </div>
 
