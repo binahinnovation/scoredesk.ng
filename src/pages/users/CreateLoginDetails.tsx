@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -186,7 +187,7 @@ const CreateLoginDetails = () => {
           const username = generateUsername(selectedRole, subject, className);
           previews.push({
             username,
-            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.test`,
+            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
             role: selectedRole,
             subjects: [subject],
             classes: [className],
@@ -199,7 +200,7 @@ const CreateLoginDetails = () => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
           username,
-          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.test`,
+          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
           role: selectedRole,
           subjects: selectedSubjects,
           classes: [className],
@@ -210,7 +211,7 @@ const CreateLoginDetails = () => {
       const username = generateUsername(selectedRole);
       previews.push({
         username,
-        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.test`,
+        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
         role: selectedRole,
         subjects: selectedSubjects,
         classes: selectedClasses,
