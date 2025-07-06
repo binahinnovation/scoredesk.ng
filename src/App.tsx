@@ -14,6 +14,8 @@ import { useEffect } from "react";
 import { initStorage } from "./integrations/supabase/storage";
 import { AuthProvider } from "./contexts/AuthContext";
 
+import { ProtectedRoute } from "./components/ProtectedRoute";
+
 // New Pages
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/users/UserManagement";
@@ -53,8 +55,8 @@ const StorageInitializer = () => {
   return null;
 };
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+// Auth-only protected route component
+const AuthProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -78,26 +80,86 @@ const AppRoutes = () => {
       
       {/* Protected routes */}
       <Route path="/" element={
-        <ProtectedRoute>
+        <AuthProtectedRoute>
           <MainLayout />
-        </ProtectedRoute>
+        </AuthProtectedRoute>
       }>
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="users/create-login" element={<CreateLoginDetails />} />
-        <Route path="users/manage" element={<ManageUsers />} />
-        <Route path="users/permissions" element={<RolePermissions />} />
-        <Route path="students" element={<StudentManagement />} />
-        <Route path="classes" element={<ClassSubjectManagement />} />
-        <Route path="results/entry" element={<ResultEntry />} />
-        <Route path="results/approval" element={<ResultApproval />} />
-        <Route path="ranking" element={<ClassRanking />} />
-        <Route path="reportcards" element={<ReportCardDesigner />} />
-        <Route path="branding" element={<SchoolBranding />} />
-        <Route path="scratchcards" element={<ScratchCards />} />
-        <Route path="analytics" element={<AnalyticsDashboard />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="terms" element={<TermManagement />} />
+        <Route path="users" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="users/create-login" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <CreateLoginDetails />
+          </ProtectedRoute>
+        } />
+        <Route path="users/manage" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <ManageUsers />
+          </ProtectedRoute>
+        } />
+        <Route path="users/permissions" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <RolePermissions />
+          </ProtectedRoute>
+        } />
+        <Route path="students" element={
+          <ProtectedRoute requiredPermission="Student Management">
+            <StudentManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="classes" element={
+          <ProtectedRoute requiredPermission="Class/Subject Setup">
+            <ClassSubjectManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="results/entry" element={
+          <ProtectedRoute requiredPermission="Result Upload">
+            <ResultEntry />
+          </ProtectedRoute>
+        } />
+        <Route path="results/approval" element={
+          <ProtectedRoute requiredPermission="Result Approval">
+            <ResultApproval />
+          </ProtectedRoute>
+        } />
+        <Route path="ranking" element={
+          <ProtectedRoute requiredPermission="Position & Ranking">
+            <ClassRanking />
+          </ProtectedRoute>
+        } />
+        <Route path="reportcards" element={
+          <ProtectedRoute requiredPermission="Report Card Designer">
+            <ReportCardDesigner />
+          </ProtectedRoute>
+        } />
+        <Route path="branding" element={
+          <ProtectedRoute requiredPermission="School Branding">
+            <SchoolBranding />
+          </ProtectedRoute>
+        } />
+        <Route path="scratchcards" element={
+          <ProtectedRoute requiredPermission="Scratch Card Generator">
+            <ScratchCards />
+          </ProtectedRoute>
+        } />
+        <Route path="analytics" element={
+          <ProtectedRoute requiredPermission="Analytics Dashboard">
+            <AnalyticsDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="settings" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <SettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="terms" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <TermManagement />
+          </ProtectedRoute>
+        } />
       </Route>
       
       <Route path="*" element={<NotFound />} />

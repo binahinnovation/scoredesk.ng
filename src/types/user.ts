@@ -6,7 +6,7 @@ export const rolePermissionMatrix = [
   { name: "User Management", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
   { name: "Student Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },
   { name: "Class/Subject Setup", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Result Upload", principal: false, examOfficer: false, formTeacher: false, subjectTeacher: true },
+  { name: "Result Upload", principal: true, examOfficer: false, formTeacher: true, subjectTeacher: true },
   { name: "Result Approval", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
   { name: "Position & Ranking", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
   { name: "Report Card Designer", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },

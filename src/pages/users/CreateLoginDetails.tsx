@@ -135,6 +135,13 @@ const CreateLoginDetails = () => {
     loadSchoolInfo();
   }, []);
 
+  const sanitizeDomain = (alias: string) => {
+    return alias
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .substring(0, 20) || 'school';
+  };
+
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
     let password = '';
@@ -179,7 +186,7 @@ const CreateLoginDetails = () => {
           const username = generateUsername(selectedRole, subject, className);
           previews.push({
             username,
-            email: `${username}@${schoolAlias}.scoredesk.ng`,
+            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.local`,
             role: selectedRole,
             subjects: [subject],
             classes: [className],
@@ -192,7 +199,7 @@ const CreateLoginDetails = () => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
           username,
-          email: `${username}@${schoolAlias}.scoredesk.ng`,
+          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.local`,
           role: selectedRole,
           subjects: selectedSubjects,
           classes: [className],
@@ -203,7 +210,7 @@ const CreateLoginDetails = () => {
       const username = generateUsername(selectedRole);
       previews.push({
         username,
-        email: `${username}@${schoolAlias}.scoredesk.ng`,
+        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.local`,
         role: selectedRole,
         subjects: selectedSubjects,
         classes: selectedClasses,
