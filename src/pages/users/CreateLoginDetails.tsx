@@ -193,7 +193,7 @@ const CreateLoginDetails = () => {
           const username = generateUsername(selectedRole, subject, className);
           previews.push({
             username,
-            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
+          email: `${username}.${sanitizeDomain(schoolAlias)}@gmail.com`,
             role: selectedRole,
             subjects: [subject],
             classes: [className],
@@ -206,7 +206,7 @@ const CreateLoginDetails = () => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
           username,
-          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
+          email: `${username}.${sanitizeDomain(schoolAlias)}@gmail.com`,
           role: selectedRole,
           subjects: selectedSubjects,
           classes: [className],
@@ -217,7 +217,7 @@ const CreateLoginDetails = () => {
       const username = generateUsername(selectedRole);
       previews.push({
         username,
-        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
+        email: `${username}.${sanitizeDomain(schoolAlias)}@gmail.com`,
         role: selectedRole,
         subjects: selectedSubjects,
         classes: selectedClasses,
