@@ -127,7 +127,9 @@ const CreateLoginDetails = () => {
 
         setSchoolId(schoolIdValue);
         setSchoolName(schoolNameValue || "");
-        setSchoolAlias(schoolNameValue ? schoolNameValue.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') : "");
+        const alias = schoolNameValue ? schoolNameValue.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') : "";
+        setSchoolAlias(alias);
+        addDebugLog(`School loaded: name="${schoolNameValue}", alias="${alias}", id="${schoolIdValue}"`);
 
       } catch (error) {
         console.error('Error loading school info:', error);
@@ -170,7 +172,11 @@ const CreateLoginDetails = () => {
   };
 
   const generatePreviews = () => {
+    addDebugLog(`Generate previews: role="${selectedRole}", schoolAlias="${schoolAlias}", schoolName="${schoolName}"`);
+    
     if (!selectedRole || !schoolAlias.trim()) {
+      const errorMsg = `Missing information - role: "${selectedRole}", schoolAlias: "${schoolAlias}"`;
+      addDebugLog(errorMsg);
       toast({
         title: "Missing Information",
         description: "Please select a role and ensure school alias is set",
@@ -187,7 +193,7 @@ const CreateLoginDetails = () => {
           const username = generateUsername(selectedRole, subject, className);
           previews.push({
             username,
-            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
+            email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
             role: selectedRole,
             subjects: [subject],
             classes: [className],
@@ -200,7 +206,7 @@ const CreateLoginDetails = () => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
           username,
-          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
+          email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
           role: selectedRole,
           subjects: selectedSubjects,
           classes: [className],
@@ -211,7 +217,7 @@ const CreateLoginDetails = () => {
       const username = generateUsername(selectedRole);
       previews.push({
         username,
-        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.com.ng`,
+        email: `${username}@${sanitizeDomain(schoolAlias)}.scoredesk.ng`,
         role: selectedRole,
         subjects: selectedSubjects,
         classes: selectedClasses,
