@@ -2,7 +2,7 @@
 export type UserRole = 'Principal' | 'Exam Officer' | 'Form Teacher' | 'Subject Teacher';
 
 export const rolePermissionMatrix = [
-  { name: "Dashboard", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: true },
+  { name: "Dashboard", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },
   { name: "User Management", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
   { name: "Student Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },
   { name: "Class/Subject Setup", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },

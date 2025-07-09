@@ -173,6 +173,88 @@ export type Database = {
           },
         ]
       }
+      question_papers: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          class_id: string
+          content: Json | null
+          created_at: string
+          file_url: string | null
+          id: string
+          pdf_url: string | null
+          school_id: string | null
+          status: string
+          subject_id: string
+          submission_mode: string
+          submitted_at: string | null
+          teacher_id: string
+          term_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_id: string
+          content?: Json | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          pdf_url?: string | null
+          school_id?: string | null
+          status?: string
+          subject_id: string
+          submission_mode: string
+          submitted_at?: string | null
+          teacher_id: string
+          term_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_id?: string
+          content?: Json | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          pdf_url?: string | null
+          school_id?: string | null
+          status?: string
+          subject_id?: string
+          submission_mode?: string
+          submitted_at?: string | null
+          teacher_id?: string
+          term_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_papers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_papers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_papers_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       results: {
         Row: {
           approved_at: string | null
@@ -685,10 +767,7 @@ export type Database = {
         | "Exam Officer"
         | "Form Teacher"
         | "Subject Teacher"
-      assessment_type:
-        | "Continuous Assessment"
-        | "Mid-Term Test"
-        | "End of Term Exam"
+      assessment_type: "Continuous Assessment" | "End of Term Exam"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -822,11 +901,7 @@ export const Constants = {
         "Form Teacher",
         "Subject Teacher",
       ],
-      assessment_type: [
-        "Continuous Assessment",
-        "Mid-Term Test",
-        "End of Term Exam",
-      ],
+      assessment_type: ["Continuous Assessment", "End of Term Exam"],
     },
   },
 } as const

@@ -23,7 +23,7 @@ import CreateLoginDetails from "./pages/users/CreateLoginDetails";
 import StudentManagement from "./pages/students/StudentManagement";
 import ClassSubjectManagement from "./pages/classes/ClassSubjectManagement";
 import ResultEntry from "./pages/results/ResultEntry";
-import ResultApproval from "./pages/results/ResultApproval";
+import StudentResultApproval from "./pages/results/StudentResultApproval";
 import ClassRanking from "./pages/ranking/ClassRanking";
 import ReportCardDesigner from "./pages/reportcards/ReportCardDesigner";
 import SchoolBranding from "./pages/branding/SchoolBranding";
@@ -34,6 +34,8 @@ import StudentResultPortal from "./pages/students/StudentResultPortal";
 import ManageUsers from "./pages/users/ManageUsers";
 import RolePermissions from "./pages/users/RolePermissions";
 import TermManagement from "./pages/settings/TermManagement";
+import ProfileSettings from "./pages/ProfileSettings";
+import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -122,7 +124,7 @@ const AppRoutes = () => {
         } />
         <Route path="results/approval" element={
           <ProtectedRoute requiredPermission="Result Approval">
-            <ResultApproval />
+            <StudentResultApproval />
           </ProtectedRoute>
         } />
         <Route path="ranking" element={
@@ -158,6 +160,12 @@ const AppRoutes = () => {
         <Route path="terms" element={
           <ProtectedRoute requiredPermission="Settings">
             <TermManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="profile-settings" element={<ProfileSettings />} />
+        <Route path="question-papers" element={
+          <ProtectedRoute requiredPermission="Result Upload">
+            <QuestionPaperSubmission />
           </ProtectedRoute>
         } />
       </Route>

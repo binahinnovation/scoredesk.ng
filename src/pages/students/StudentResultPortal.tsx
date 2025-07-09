@@ -85,16 +85,38 @@ const StudentResultPortal = () => {
         return;
       }
 
-      // For now, fetch results directly (simplified version)
-      const { data, error } = await supabase
-        .from('results')
-        .select('*')
+      // Verify student exists
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, student_id')
         .eq('student_id', studentId)
+        .single();
+
+      if (studentError || !studentData) {
+        toast({
+          title: "Student Not Found",
+          description: "No student found with that ID. Please check and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Fetch results with proper joins
+      const { data: resultsData, error: resultsError } = await supabase
+        .from('results')
+        .select(`
+          id,
+          score,
+          max_score,
+          subjects:subject_id (name, code),
+          assessments:assessment_id (name, max_score)
+        `)
+        .eq('student_id', studentData.id)
         .eq('term_id', termId)
         .eq('is_approved', true);
 
-      if (error) {
-        console.error('Error calling function:', error);
+      if (resultsError) {
+        console.error('Error fetching results:', resultsError);
         toast({
           title: "Error",
           description: "Failed to fetch results. Please try again.",
@@ -103,29 +125,27 @@ const StudentResultPortal = () => {
         return;
       }
 
-      // Type assertion with proper validation
-      const response = data as unknown as ApiResponse;
-      
-      if (!response || typeof response !== 'object' || !('success' in response)) {
-        throw new Error('Invalid response format');
-      }
+      // Transform data to expected format
+      const transformedResults: Result[] = (resultsData || []).map(result => ({
+        subject: result.subjects?.name || 'Unknown Subject',
+        subject_code: result.subjects?.code || '',
+        assessment: result.assessments?.name || 'Unknown Assessment',
+        score: result.score,
+        max_score: result.max_score,
+        percentage: Math.round((result.score / result.max_score) * 100)
+      }));
 
-      if (response.success) {
-        setStudent(response.student || null);
-        setResults(response.results || []);
-        toast({
-          title: "Success",
-          description: response.message,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: response.message,
-          variant: "destructive",
-        });
-        setResults([]);
-        setStudent(null);
-      }
+      // Set student and results
+      setStudent({
+        name: `${studentData.first_name} ${studentData.last_name}`,
+        student_id: studentData.student_id
+      });
+      setResults(transformedResults);
+      
+      toast({
+        title: "Success",
+        description: `Found ${transformedResults.length} approved results`,
+      });
     } catch (error) {
       console.error('Error fetching results:', error);
       toast({
