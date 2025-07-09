@@ -80,7 +80,17 @@ export default function ResultEntry() {
 
       // Fetch subjects
       const { data: subjectsData } = await supabase.from("subjects").select("*");
-      setSubjects(subjectsData || []);
+      
+      // Filter subjects based on user role and assigned subjects
+      let filteredSubjects = subjectsData || [];
+      if (userRole === 'Subject Teacher' && user?.user_metadata?.subjects) {
+        const assignedSubjects = user.user_metadata.subjects;
+        filteredSubjects = subjectsData?.filter(subject => 
+          assignedSubjects.includes(subject.name)
+        ) || [];
+      }
+      
+      setSubjects(filteredSubjects);
 
       // Fetch assessments
       const { data: assessmentsData } = await supabase.from("assessments").select("*");
