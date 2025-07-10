@@ -37,6 +37,7 @@ import AssessmentSettings from "./pages/settings/AssessmentSettings";
 import TermManagement from "./pages/settings/TermManagement";
 import ProfileSettings from "./pages/ProfileSettings";
 import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
+import QuestionPaperManagement from "./pages/questions/QuestionPaperManagement";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -169,9 +170,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
         <Route path="profile-settings" element={<ProfileSettings />} />
-        <Route path="question-papers" element={
+        <Route path="questions/submission" element={
           <ProtectedRoute requiredPermission="Result Upload">
             <QuestionPaperSubmission />
+          </ProtectedRoute>
+        } />
+        <Route path="questions/management" element={
+          <ProtectedRoute requiredPermission="Result Approval">
+            <QuestionPaperManagement />
           </ProtectedRoute>
         } />
       </Route>

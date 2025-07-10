@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Scan, Download, Eye, Plus, Trash2 } from "lucide-react";
+import { Upload, FileText, Scan, Download, Eye, Plus, Trash2, FileDown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import jsPDF from 'jspdf';
 
 interface QuestionPaper {
   id: string;
@@ -55,6 +56,7 @@ export default function QuestionPaperSubmission() {
   const [selectedTerm, setSelectedTerm] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [previewPdf, setPreviewPdf] = useState<string | null>(null);
 
   useEffect(() => {
     if (hasPermission("Result Upload")) {
@@ -116,6 +118,57 @@ export default function QuestionPaperSubmission() {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
+  const generatePDF = async (questions: Question[], paperTitle: string): Promise<Blob> => {
+    const pdf = new jsPDF();
+    let yPos = 20;
+    
+    // Header
+    pdf.setFontSize(16);
+    pdf.text(paperTitle, 20, yPos);
+    yPos += 20;
+    
+    pdf.setFontSize(12);
+    pdf.text(`Subject: ${subjects.find(s => s.id === selectedSubject)?.name || 'Unknown'}`, 20, yPos);
+    yPos += 10;
+    pdf.text(`Class: ${classes.find(c => c.id === selectedClass)?.name || 'Unknown'}`, 20, yPos);
+    yPos += 10;
+    pdf.text(`Term: ${terms.find(t => t.id === selectedTerm)?.name || 'Unknown'}`, 20, yPos);
+    yPos += 20;
+    
+    // Instructions
+    pdf.text('Instructions:', 20, yPos);
+    yPos += 10;
+    pdf.text('• Answer all questions', 25, yPos);
+    yPos += 8;
+    pdf.text('• Write clearly and legibly', 25, yPos);
+    yPos += 8;
+    pdf.text('• Show all workings where applicable', 25, yPos);
+    yPos += 20;
+    
+    // Questions
+    questions.forEach((question, index) => {
+      if (yPos > 250) {
+        pdf.addPage();
+        yPos = 20;
+      }
+      
+      pdf.setFontSize(11);
+      pdf.text(`${index + 1}.`, 20, yPos);
+      
+      // Split question text into lines
+      const lines = pdf.splitTextToSize(question.question_text, 160);
+      pdf.text(lines, 30, yPos);
+      yPos += lines.length * 7;
+      
+      // Question details
+      pdf.setFontSize(9);
+      pdf.text(`[${question.marks} mark${question.marks > 1 ? 's' : ''} - ${question.question_type}]`, 30, yPos);
+      yPos += 15;
+    });
+    
+    return pdf.output('blob');
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -125,6 +178,22 @@ export default function QuestionPaperSubmission() {
         toast({
           title: "Invalid File Type",
           description: "Please upload a PDF or image file",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const generatePreview = async () => {
+    if (submissionMode === 'manual' && questions.length > 0) {
+      try {
+        const pdfBlob = await generatePDF(questions, title || 'Question Paper');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        setPreviewPdf(pdfUrl);
+      } catch (error) {
+        toast({
+          title: "Preview Error",
+          description: "Failed to generate preview",
           variant: "destructive",
         });
       }
@@ -162,16 +231,35 @@ export default function QuestionPaperSubmission() {
     setLoading(true);
     try {
       let fileUrl = null;
+      let pdfUrl = null;
+
+      // Generate PDF for manual mode
+      if (submissionMode === 'manual') {
+        const pdfBlob = await generatePDF(questions, title);
+        const pdfFileName = `question-papers/pdf/${Date.now()}-${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        
+        const { error: pdfUploadError } = await supabase.storage
+          .from('documents')
+          .upload(pdfFileName, pdfBlob);
+
+        if (pdfUploadError) throw pdfUploadError;
+        pdfUrl = pdfFileName;
+      }
 
       // Upload file if in scan mode
       if (submissionMode === 'scan' && uploadedFile) {
-        const fileName = `question-papers/${Date.now()}-${uploadedFile.name}`;
+        const fileName = `question-papers/original/${Date.now()}-${uploadedFile.name}`;
         const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, uploadedFile);
 
         if (uploadError) throw uploadError;
         fileUrl = fileName;
+        
+        // For scanned files, also set as PDF if it's already a PDF
+        if (uploadedFile.type === 'application/pdf') {
+          pdfUrl = fileName;
+        }
       }
 
       // Create question paper record
@@ -184,7 +272,9 @@ export default function QuestionPaperSubmission() {
         submission_mode: submissionMode,
         content: submissionMode === 'manual' ? JSON.stringify({ questions }) : null,
         file_url: fileUrl,
-        status: 'Submitted'
+        pdf_url: pdfUrl,
+        status: 'Submitted',
+        submitted_at: new Date().toISOString()
       } as any);
 
       if (error) throw error;
@@ -200,6 +290,7 @@ export default function QuestionPaperSubmission() {
       setSelectedClass('');
       setQuestions([]);
       setUploadedFile(null);
+      setPreviewPdf(null);
       
       // Refresh data
       await fetchData();
@@ -379,6 +470,19 @@ export default function QuestionPaperSubmission() {
                     </Card>
                   ))}
                 </div>
+                
+                {questions.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={generatePreview}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview PDF
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="scan" className="space-y-4">
@@ -415,6 +519,17 @@ export default function QuestionPaperSubmission() {
                 </div>
               </TabsContent>
             </Tabs>
+
+            {previewPdf && (
+              <div className="border rounded-lg p-4">
+                <Label>PDF Preview</Label>
+                <iframe 
+                  src={previewPdf} 
+                  className="w-full h-96 border rounded mt-2"
+                  title="Question Paper Preview"
+                />
+              </div>
+            )}
 
             <Button 
               onClick={submitQuestionPaper} 
@@ -463,11 +578,59 @@ export default function QuestionPaperSubmission() {
                       </div>
                       <div className="flex gap-2">
                         {paper.pdf_url && (
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const { data } = await supabase.storage
+                                  .from('documents')
+                                  .download(paper.pdf_url!);
+                                
+                                if (data) {
+                                  const url = URL.createObjectURL(data);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `${paper.title}.pdf`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Download Error",
+                                  description: "Failed to download PDF",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={async () => {
+                            if (paper.pdf_url) {
+                              try {
+                                const { data } = await supabase.storage
+                                  .from('documents')
+                                  .download(paper.pdf_url);
+                                
+                                if (data) {
+                                  const url = URL.createObjectURL(data);
+                                  window.open(url, '_blank');
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Preview Error",
+                                  description: "Failed to preview PDF",
+                                  variant: "destructive",
+                                });
+                              }
+                            }
+                          }}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                       </div>

@@ -172,6 +172,27 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                   </NavLink>
                 )}
 
+{hasPermission("Result Upload") && (
+                  <NavLink to="/questions/submission">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Question Papers</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
 {hasPermission("Result Approval") && (
                   <NavLink to="/results/approval">
                     {({ isActive }) => (
@@ -188,6 +209,27 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                         <span className={cn("transition-all duration-300", 
                           open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
                         )}>Result Approval</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Result Approval") && (
+                  <NavLink to="/questions/management">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Paper Management</span>
                       </Button>
                     )}
                   </NavLink>
