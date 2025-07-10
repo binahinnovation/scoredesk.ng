@@ -50,17 +50,28 @@ const StudentResultPortal = () => {
 
     setLoading(true);
     try {
-      // Get current term (for now, we'll use the first available term)
-      const { data: terms } = await supabase
+      // Get current term with fallback to most recent term
+      let { data: terms } = await supabase
         .from('terms')
-        .select('id')
+        .select('id, name, is_current')
         .eq('is_current', true)
         .limit(1);
+
+      // If no current term, get the most recent term
+      if (!terms || terms.length === 0) {
+        const { data: fallbackTerms } = await supabase
+          .from('terms')
+          .select('id, name, is_current')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        terms = fallbackTerms;
+      }
 
       if (!terms || terms.length === 0) {
         toast({
           title: "Error",
-          description: "No active term found. Please contact your school administrator.",
+          description: "No terms found. Please contact your school administrator.",
           variant: "destructive",
         });
         return;

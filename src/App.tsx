@@ -33,6 +33,7 @@ import SettingsPage from "./pages/settings/SettingsPage";
 import StudentResultPortal from "./pages/students/StudentResultPortal";
 import ManageUsers from "./pages/users/ManageUsers";
 import RolePermissions from "./pages/users/RolePermissions";
+import AssessmentSettings from "./pages/settings/AssessmentSettings";
 import TermManagement from "./pages/settings/TermManagement";
 import ProfileSettings from "./pages/ProfileSettings";
 import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
@@ -152,14 +153,19 @@ const AppRoutes = () => {
             <AnalyticsDashboard />
           </ProtectedRoute>
         } />
+        <Route path="settings/terms" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <TermManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="settings/assessments" element={
+          <ProtectedRoute requiredPermission="Assessment Management">
+            <AssessmentSettings />
+          </ProtectedRoute>
+        } />
         <Route path="settings" element={
           <ProtectedRoute requiredPermission="Settings">
             <SettingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="terms" element={
-          <ProtectedRoute requiredPermission="Settings">
-            <TermManagement />
           </ProtectedRoute>
         } />
         <Route path="profile-settings" element={<ProfileSettings />} />

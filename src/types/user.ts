@@ -14,4 +14,5 @@ export const rolePermissionMatrix = [
   { name: "Scratch Card Generator", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
   { name: "Analytics Dashboard", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
   { name: "Settings", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
+  { name: "Assessment Management", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
 ];
