@@ -194,13 +194,15 @@ export default function ResultEntry() {
             : r
         );
       } else {
-        return [...prev, {
+        // Create new result without id field - let database generate it
+        const newResult = {
           student_id: studentId,
           subject_id: selectedSubject,
           assessment_id: selectedAssessment,
           term_id: selectedTerm,
           score: scoreValue
-        }];
+        };
+        return [...prev, newResult];
       }
     });
   };
@@ -217,27 +219,46 @@ export default function ResultEntry() {
 
     setSaving(true);
     try {
-      const resultsToSave = results.map(result => {
-        if (result.id) {
-          // Existing result - keep the id
-          return { ...result, teacher_id: user.id, is_approved: false };
-        } else {
-          // New result - omit id to let database generate it
-          const { id, ...resultWithoutId } = result;
-          return { ...resultWithoutId, teacher_id: user.id, is_approved: false };
-        }
-      });
+      // Separate new and existing results
+      const newResults = results.filter(result => !result.id).map(result => ({
+        student_id: result.student_id,
+        subject_id: result.subject_id,
+        assessment_id: result.assessment_id,
+        term_id: result.term_id,
+        score: result.score,
+        teacher_id: user.id,
+        is_approved: false
+      }));
 
-      console.log("Saving results:", resultsToSave);
+      const existingResults = results.filter(result => result.id).map(result => ({
+        ...result,
+        teacher_id: user.id,
+        is_approved: false
+      }));
 
-      const { error } = await supabase
-        .from("results")
-        .upsert(resultsToSave, { 
-          onConflict: "student_id,subject_id,term_id,assessment_id",
-          ignoreDuplicates: false 
-        });
+      console.log("New results to insert:", newResults);
+      console.log("Existing results to update:", existingResults);
 
-      if (error) throw error;
+      // Insert new results
+      if (newResults.length > 0) {
+        const { error: insertError } = await supabase
+          .from("results")
+          .insert(newResults);
+        
+        if (insertError) throw insertError;
+      }
+
+      // Update existing results
+      if (existingResults.length > 0) {
+        const { error: updateError } = await supabase
+          .from("results")
+          .upsert(existingResults, { 
+            onConflict: "id",
+            ignoreDuplicates: false 
+          });
+        
+        if (updateError) throw updateError;
+      }
 
       toast({
         title: "Success",

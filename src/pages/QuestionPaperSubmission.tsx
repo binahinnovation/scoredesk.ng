@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Upload, FileText, Scan, Download, Eye, Plus, Trash2, FileDown, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Type, Printer } from "lucide-react";
+import { Upload, FileText, Scan, Download, Eye, Plus, Trash2, FileDown, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Type, Printer, Maximize2, Minimize2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,7 @@ export default function QuestionPaperSubmission() {
   const [terms, setTerms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [submissionMode, setSubmissionMode] = useState<'scan' | 'manual'>('manual');
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -125,51 +126,56 @@ export default function QuestionPaperSubmission() {
   };
 
   const generatePDF = async (questions: Question[], paperTitle: string): Promise<Blob> => {
-    const pdf = new jsPDF();
-    let yPos = 20;
+    // A4 dimensions: 210mm x 297mm
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    let yPos = 25; // Top margin
     
-    // Header
+    // Header with A4 margins (20mm sides, 25mm top)
     pdf.setFontSize(16);
-    pdf.text(paperTitle, 20, yPos);
-    yPos += 20;
+    pdf.text(paperTitle, 105, yPos, { align: 'center' }); // Center title
+    yPos += 15;
     
     pdf.setFontSize(12);
     pdf.text(`Subject: ${subjects.find(s => s.id === selectedSubject)?.name || 'Unknown'}`, 20, yPos);
-    yPos += 10;
+    yPos += 8;
     pdf.text(`Class: ${classes.find(c => c.id === selectedClass)?.name || 'Unknown'}`, 20, yPos);
-    yPos += 10;
+    yPos += 8;
     pdf.text(`Term: ${terms.find(t => t.id === selectedTerm)?.name || 'Unknown'}`, 20, yPos);
-    yPos += 20;
+    yPos += 15;
     
     // Instructions
+    pdf.setFontSize(11);
     pdf.text('Instructions:', 20, yPos);
-    yPos += 10;
+    yPos += 8;
     pdf.text('• Answer all questions', 25, yPos);
-    yPos += 8;
+    yPos += 6;
     pdf.text('• Write clearly and legibly', 25, yPos);
-    yPos += 8;
+    yPos += 6;
     pdf.text('• Show all workings where applicable', 25, yPos);
-    yPos += 20;
+    yPos += 15;
     
-    // Questions
+    // Questions with A4 page management (270mm bottom margin)
     questions.forEach((question, index) => {
-      if (yPos > 250) {
+      if (yPos > 270) { // A4 bottom margin
         pdf.addPage();
-        yPos = 20;
+        yPos = 25; // Reset to top margin
       }
       
       pdf.setFontSize(11);
       pdf.text(`${index + 1}.`, 20, yPos);
       
-      // Split question text into lines
-      const lines = pdf.splitTextToSize(question.question_text, 160);
+      // Split question text into lines (170mm max width for A4 with margins)
+      const lines = pdf.splitTextToSize(question.question_text, 170);
       pdf.text(lines, 30, yPos);
-      yPos += lines.length * 7;
+      yPos += lines.length * 6;
       
       // Question details
       pdf.setFontSize(9);
       pdf.text(`[${question.marks} mark${question.marks > 1 ? 's' : ''} - ${question.question_type}]`, 30, yPos);
-      yPos += 15;
+      yPos += 12;
+      
+      // Add spacing between questions
+      yPos += 5;
     });
     
     return pdf.output('blob');
@@ -331,11 +337,31 @@ export default function QuestionPaperSubmission() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold text-gray-900">Question Paper Submission</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Question Paper Submission</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsMaximized(!isMaximized)}
+          className="flex items-center gap-2"
+        >
+          {isMaximized ? (
+            <>
+              <Minimize2 className="h-4 w-4" />
+              Normal View
+            </>
+          ) : (
+            <>
+              <Maximize2 className="h-4 w-4" />
+              Maximize
+            </>
+          )}
+        </Button>
+      </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid gap-6 ${isMaximized ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'}`}>
         {/* Submission Form */}
-        <Card>
+        <Card className={isMaximized ? 'w-full' : ''}>
           <CardHeader>
             <CardTitle>Submit New Question Paper</CardTitle>
           </CardHeader>
@@ -462,12 +488,17 @@ export default function QuestionPaperSubmission() {
 
             {previewPdf && (
               <div className="border rounded-lg p-4">
-                <Label>PDF Preview</Label>
-                <iframe 
-                  src={previewPdf} 
-                  className="w-full h-96 border rounded mt-2"
-                  title="Question Paper Preview"
-                />
+                <Label>A4 PDF Preview</Label>
+                <div className="mt-2 border rounded bg-white shadow-sm" style={{ aspectRatio: '210/297' }}>
+                  <iframe 
+                    src={previewPdf} 
+                    className={`w-full border rounded ${isMaximized ? 'h-[80vh]' : 'h-96'}`}
+                    title="Question Paper Preview"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  A4 Format: 210mm × 297mm with proper margins for printing
+                </p>
               </div>
             )}
 
@@ -482,7 +513,7 @@ export default function QuestionPaperSubmission() {
         </Card>
 
         {/* Submitted Papers */}
-        <Card>
+        {!isMaximized && <Card>
           <CardHeader>
             <CardTitle>My Question Papers</CardTitle>
           </CardHeader>
@@ -580,7 +611,7 @@ export default function QuestionPaperSubmission() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
     </div>
   );
