@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { toast } from "@/components/ui/use-toast";
-import { Plus, Edit, Trash2, Search, Download, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Download, FileText, RefreshCw } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
+import { generateStudentId, validateStudentId } from '@/utils/studentIdGenerator';
 
 interface Student {
   id: string;
@@ -64,6 +65,7 @@ export default function StudentManagement() {
     guardian_email: '',
     status: 'Active'
   });
+  const [isGeneratingId, setIsGeneratingId] = useState(false);
 
   const { hasPermission } = useUserRole();
   const queryClient = useQueryClient();
@@ -104,18 +106,40 @@ export default function StudentManagement() {
   // Create student mutation
   const createStudentMutation = useMutation({
     mutationFn: async (studentData: typeof formData) => {
+      // Auto-generate student ID if not provided
+      let finalStudentData = { ...studentData };
+      
+      if (!studentData.student_id.trim()) {
+        try {
+          finalStudentData.student_id = await generateStudentId({
+            schoolId: studentData.class_id ? undefined : undefined // Will use current user's school
+          });
+        } catch (error) {
+          throw new Error('Failed to generate student ID: ' + (error as Error).message);
+        }
+      } else {
+        // Validate manually entered ID
+        const validation = validateStudentId(studentData.student_id);
+        if (!validation.isValid) {
+          throw new Error(validation.message);
+        }
+      }
+
       const { data, error } = await supabase
         .from('students')
-        .insert([studentData])
+        .insert([finalStudentData])
         .select()
         .single();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
-      toast({ title: "Student created successfully" });
+      toast({ 
+        title: "Student created successfully",
+        description: `Student ID: ${data.student_id}`
+      });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -225,8 +249,42 @@ export default function StudentManagement() {
     setIsDialogOpen(true);
   };
 
+  const handleGenerateStudentId = async () => {
+    setIsGeneratingId(true);
+    try {
+      const generatedId = await generateStudentId();
+      setFormData({ ...formData, student_id: generatedId });
+      toast({
+        title: "Student ID Generated",
+        description: `Generated ID: ${generatedId}`
+      });
+    } catch (error) {
+      toast({
+        title: "Error generating ID",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingId(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate student ID if provided
+    if (formData.student_id.trim()) {
+      const validation = validateStudentId(formData.student_id);
+      if (!validation.isValid) {
+        toast({
+          title: "Invalid Student ID",
+          description: validation.message,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     if (editingStudent) {
       updateStudentMutation.mutate({ ...formData, id: editingStudent.id });
     } else {
@@ -424,13 +482,33 @@ export default function StudentManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="student_id">Student ID *</Label>
-                    <Input
-                      id="student_id"
-                      value={formData.student_id}
-                      onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                      required
-                    />
+                    <Label htmlFor="student_id">Student ID</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="student_id"
+                        value={formData.student_id}
+                        onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                        placeholder="Auto-generated if empty"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateStudentId}
+                        disabled={isGeneratingId}
+                        className="whitespace-nowrap"
+                      >
+                        {isGeneratingId ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        Generate
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave empty for auto-generation or enter custom ID (format: prefix-12345)
+                    </p>
                   </div>
                 </div>
 

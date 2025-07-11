@@ -107,20 +107,49 @@ const StudentResultPortal = () => {
         // Continue anyway - don't block result viewing for this
       }
 
-      // Verify student exists with case-insensitive lookup
-      console.log("Looking up student with ID:", studentId);
-      const { data: studentData, error: studentError } = await supabase
+      // Enhanced student lookup with multiple strategies
+      const trimmedId = studentId.trim();
+      console.log("Looking up student with ID:", trimmedId);
+      
+      // Try exact match first
+      let { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
-        .ilike('student_id', studentId.trim())
+        .eq('student_id', trimmedId)
         .eq('status', 'Active')
-        .single();
+        .maybeSingle();
 
-      if (studentError || !studentData) {
-        console.error("Student lookup error:", studentError);
+      // If exact match fails, try case-insensitive match
+      if (!studentData && !studentError) {
+        console.log("Exact match failed, trying case-insensitive lookup");
+        const { data: students } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, student_id, status')
+          .ilike('student_id', trimmedId)
+          .eq('status', 'Active');
+        
+        studentData = students?.[0] || null;
+      }
+
+      // If still no match, try with spaces and hyphens normalized
+      if (!studentData && !studentError) {
+        console.log("Case-insensitive failed, trying normalized lookup");
+        const normalizedInput = trimmedId.replace(/[\s-]/g, '').toLowerCase();
+        const { data: allStudents } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, student_id, status')
+          .eq('status', 'Active');
+        
+        studentData = allStudents?.find(student => 
+          student.student_id.replace(/[\s-]/g, '').toLowerCase() === normalizedInput
+        ) || null;
+      }
+
+      if (!studentData) {
+        console.error("Student lookup failed for ID:", trimmedId);
         toast({
           title: "Student Not Found",
-          description: "No active student found with that ID. Please check the Student ID and try again.",
+          description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct and the student status is Active.`,
           variant: "destructive",
         });
         return;

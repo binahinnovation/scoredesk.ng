@@ -330,8 +330,8 @@ export function RichQuestionEditor({
 
                     <div>
                       <Label>Question Text</Label>
-                      <Editor
-                        apiKey="your-tinymce-api-key"
+                       <Editor
+                         apiKey="4p9rrdmnwohm65wffmzhj0mlmk7gt99cw2c47btmqh5rakzm"
                         value={activeQuestion.question_text}
                         onEditorChange={(content) => updateQuestion(activeQuestion.id, 'question_text', content)}
                         init={{
