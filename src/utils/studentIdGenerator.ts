@@ -20,11 +20,11 @@ export const generateStudentId = async (options: GenerateStudentIdOptions = {}):
         .single();
       
       if (school) {
-        // Use alias if available, otherwise create from school name
+        // Use alias if available, otherwise create from school name (first 3 letters)
         prefix = school.alias || 
                  school.name.toLowerCase()
                            .replace(/[^a-z0-9]/g, '') // Remove special characters
-                           .substring(0, 15); // Limit length
+                           .substring(0, 3); // Limit to 3 letters
       }
     } else {
       // Try to get current user's school from profile first
@@ -35,10 +35,10 @@ export const generateStudentId = async (options: GenerateStudentIdOptions = {}):
         .single();
       
       if (profile?.school_name) {
-        // Use school_name from profile (prioritize this)
+        // Use school_name from profile (prioritize this) - only first 3 letters
         prefix = profile.school_name.toLowerCase()
                                    .replace(/[^a-z0-9]/g, '')
-                                   .substring(0, 15);
+                                   .substring(0, 3);
       } else if (profile?.school_id) {
         const { data: school } = await supabase
           .from('schools')
@@ -50,7 +50,7 @@ export const generateStudentId = async (options: GenerateStudentIdOptions = {}):
           prefix = school.alias || 
                    school.name.toLowerCase()
                              .replace(/[^a-z0-9]/g, '')
-                             .substring(0, 15);
+                             .substring(0, 3);
         }
       }
     }
@@ -89,12 +89,14 @@ export const validateStudentId = (studentId: string): { isValid: boolean; messag
   
   const trimmed = studentId.trim();
   
-  // Basic format validation (prefix-number)
-  const formatRegex = /^[a-zA-Z0-9]+-\d{5}$/;
-  if (!formatRegex.test(trimmed)) {
+  // Allow both old format (just numbers) and new format (prefix-number)
+  const oldFormatRegex = /^\d+$/; // Just numbers
+  const newFormatRegex = /^[a-zA-Z0-9]+-\d{5}$/; // prefix-number
+  
+  if (!oldFormatRegex.test(trimmed) && !newFormatRegex.test(trimmed)) {
     return { 
       isValid: false, 
-      message: 'Student ID should be in format: prefix-12345 (5 digits)' 
+      message: 'Student ID should be in format: prefix-12345 (5 digits) or just numbers for legacy IDs' 
     };
   }
   

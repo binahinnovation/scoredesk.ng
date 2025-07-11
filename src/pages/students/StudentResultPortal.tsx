@@ -111,7 +111,7 @@ const StudentResultPortal = () => {
       const trimmedId = studentId.trim();
       console.log("Looking up student with ID:", trimmedId);
       
-      // Try exact match first
+      // Strategy 1: Exact match (works for both old and new formats)
       let { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
@@ -119,7 +119,7 @@ const StudentResultPortal = () => {
         .eq('status', 'Active')
         .maybeSingle();
 
-      // If exact match fails, try case-insensitive match
+      // Strategy 2: Case-insensitive match
       if (!studentData && !studentError) {
         console.log("Exact match failed, trying case-insensitive lookup");
         const { data: students } = await supabase
@@ -131,18 +131,48 @@ const StudentResultPortal = () => {
         studentData = students?.[0] || null;
       }
 
-      // If still no match, try with spaces and hyphens normalized
+      // Strategy 3: Check if input is just numbers (legacy format)
+      if (!studentData && !studentError && /^\d+$/.test(trimmedId)) {
+        console.log("Trying legacy number-only format lookup");
+        const { data: students } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, student_id, status')
+          .eq('student_id', trimmedId)
+          .eq('status', 'Active');
+        
+        studentData = students?.[0] || null;
+      }
+
+      // Strategy 4: Try partial matching for hyphenated IDs
+      if (!studentData && !studentError && trimmedId.includes('-')) {
+        console.log("Trying partial hyphenated ID lookup");
+        const { data: students } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, student_id, status')
+          .ilike('student_id', `%${trimmedId}%`)
+          .eq('status', 'Active');
+        
+        // Find exact match within results
+        studentData = students?.find(student => 
+          student.student_id.toLowerCase() === trimmedId.toLowerCase()
+        ) || students?.[0] || null;
+      }
+
+      // Strategy 5: Normalized lookup (remove spaces and hyphens)
       if (!studentData && !studentError) {
-        console.log("Case-insensitive failed, trying normalized lookup");
+        console.log("Trying normalized lookup");
         const normalizedInput = trimmedId.replace(/[\s-]/g, '').toLowerCase();
         const { data: allStudents } = await supabase
           .from('students')
           .select('id, first_name, last_name, student_id, status')
           .eq('status', 'Active');
         
-        studentData = allStudents?.find(student => 
-          student.student_id.replace(/[\s-]/g, '').toLowerCase() === normalizedInput
-        ) || null;
+        studentData = allStudents?.find(student => {
+          const normalizedStudentId = student.student_id.replace(/[\s-]/g, '').toLowerCase();
+          return normalizedStudentId === normalizedInput || 
+                 normalizedStudentId.includes(normalizedInput) ||
+                 normalizedInput.includes(normalizedStudentId);
+        }) || null;
       }
 
       if (!studentData) {
