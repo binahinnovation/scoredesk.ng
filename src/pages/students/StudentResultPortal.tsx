@@ -107,21 +107,26 @@ const StudentResultPortal = () => {
         // Continue anyway - don't block result viewing for this
       }
 
-      // Verify student exists
+      // Verify student exists with case-insensitive lookup
+      console.log("Looking up student with ID:", studentId);
       const { data: studentData, error: studentError } = await supabase
         .from('students')
-        .select('id, first_name, last_name, student_id')
-        .eq('student_id', studentId)
+        .select('id, first_name, last_name, student_id, status')
+        .ilike('student_id', studentId.trim())
+        .eq('status', 'Active')
         .single();
 
       if (studentError || !studentData) {
+        console.error("Student lookup error:", studentError);
         toast({
           title: "Student Not Found",
-          description: "No student found with that ID. Please check and try again.",
+          description: "No active student found with that ID. Please check the Student ID and try again.",
           variant: "destructive",
         });
         return;
       }
+
+      console.log("Found student:", studentData);
 
       // Fetch results with proper joins
       const { data: resultsData, error: resultsError } = await supabase

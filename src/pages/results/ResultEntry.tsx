@@ -217,11 +217,18 @@ export default function ResultEntry() {
 
     setSaving(true);
     try {
-      const resultsToSave = results.map(result => ({
-        ...result,
-        teacher_id: user.id,
-        is_approved: false
-      }));
+      const resultsToSave = results.map(result => {
+        if (result.id) {
+          // Existing result - keep the id
+          return { ...result, teacher_id: user.id, is_approved: false };
+        } else {
+          // New result - omit id to let database generate it
+          const { id, ...resultWithoutId } = result;
+          return { ...resultWithoutId, teacher_id: user.id, is_approved: false };
+        }
+      });
+
+      console.log("Saving results:", resultsToSave);
 
       const { error } = await supabase
         .from("results")
