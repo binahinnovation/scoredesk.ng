@@ -408,6 +408,7 @@ export type Database = {
           updated_at: string
           used_at: string | null
           used_by: string | null
+          used_for_result_check: boolean | null
         }
         Insert: {
           amount?: number
@@ -423,6 +424,7 @@ export type Database = {
           updated_at?: string
           used_at?: string | null
           used_by?: string | null
+          used_for_result_check?: boolean | null
         }
         Update: {
           amount?: number
@@ -438,6 +440,7 @@ export type Database = {
           updated_at?: string
           used_at?: string | null
           used_by?: string | null
+          used_for_result_check?: boolean | null
         }
         Relationships: [
           {
@@ -758,6 +761,10 @@ export type Database = {
       }
       is_current_user_principal: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      mark_scratch_card_used: {
+        Args: { card_pin: string }
         Returns: boolean
       }
     }

@@ -79,21 +79,32 @@ const StudentResultPortal = () => {
 
       const termId = terms[0].id;
 
-      // For now, just verify the scratch card exists and is valid
+      // Verify and mark scratch card as used
       const { data: scratchCard, error: cardError } = await supabase
         .from('scratch_cards')
         .select('*')
         .eq('pin', pin)
         .eq('status', 'Active')
+        .eq('used_for_result_check', false)
         .single();
 
       if (cardError || !scratchCard) {
         toast({
           title: "Invalid PIN",
-          description: "The PIN you entered is invalid or has already been used.",
+          description: "The PIN you entered is invalid or has already been used for result checking.",
           variant: "destructive",
         });
         return;
+      }
+
+      // Mark scratch card as used for result checking
+      const { error: markUsedError } = await supabase.rpc('mark_scratch_card_used', {
+        card_pin: pin
+      });
+
+      if (markUsedError) {
+        console.error('Error marking scratch card as used:', markUsedError);
+        // Continue anyway - don't block result viewing for this
       }
 
       // Verify student exists

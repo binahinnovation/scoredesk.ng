@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Scan, Download, Eye, Plus, Trash2, FileDown } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Upload, FileText, Scan, Download, Eye, Plus, Trash2, FileDown, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Type, Printer } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Editor } from '@tinymce/tinymce-react';
+import { useReactToPrint } from 'react-to-print';
+import { RichQuestionEditor } from '@/components/RichQuestionEditor';
 import jsPDF from 'jspdf';
 
 interface QuestionPaper {
@@ -36,7 +40,9 @@ interface Question {
   id: string;
   question_text: string;
   marks: number;
-  question_type: 'objective' | 'theory' | 'practical';
+  question_type: 'objective' | 'theory' | 'practical' | 'multiple_choice';
+  options?: string[];
+  correct_answer?: string;
 }
 
 export default function QuestionPaperSubmission() {
@@ -409,80 +415,14 @@ export default function QuestionPaperSubmission() {
               </TabsList>
 
               <TabsContent value="manual" className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Questions</Label>
-                  <Button onClick={addQuestion} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                  </Button>
-                </div>
-                
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {questions.map((question, index) => (
-                    <Card key={question.id} className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <Label>Question {index + 1}</Label>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => removeQuestion(question.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        <Textarea
-                          value={question.question_text}
-                          onChange={(e) => updateQuestion(question.id, 'question_text', e.target.value)}
-                          placeholder="Enter question text"
-                          rows={3}
-                        />
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label>Marks</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={question.marks}
-                              onChange={(e) => updateQuestion(question.id, 'marks', parseInt(e.target.value))}
-                            />
-                          </div>
-                          <div>
-                            <Label>Type</Label>
-                            <Select
-                              value={question.question_type}
-                              onValueChange={(value) => updateQuestion(question.id, 'question_type', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="objective">Objective</SelectItem>
-                                <SelectItem value="theory">Theory</SelectItem>
-                                <SelectItem value="practical">Practical</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-                
-                {questions.length > 0 && (
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={generatePreview}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Preview PDF
-                    </Button>
-                  </div>
-                )}
+                <RichQuestionEditor
+                  questions={questions}
+                  onQuestionsChange={setQuestions}
+                  title={title}
+                  subjectName={subjects.find(s => s.id === selectedSubject)?.name || ''}
+                  className={classes.find(c => c.id === selectedClass)?.name || ''}
+                  termName={terms.find(t => t.id === selectedTerm)?.name || ''}
+                />
               </TabsContent>
 
               <TabsContent value="scan" className="space-y-4">
