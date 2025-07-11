@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Editor } from '@tinymce/tinymce-react';
 import { useReactToPrint } from 'react-to-print';
 import { RichQuestionEditor } from '@/components/RichQuestionEditor';
+import { EditablePreview } from '@/components/EditablePreview';
 import jsPDF from 'jspdf';
 
 interface QuestionPaper {
@@ -441,14 +442,27 @@ export default function QuestionPaperSubmission() {
               </TabsList>
 
               <TabsContent value="manual" className="space-y-4">
-                <RichQuestionEditor
-                  questions={questions}
-                  onQuestionsChange={setQuestions}
-                  title={title}
-                  subjectName={subjects.find(s => s.id === selectedSubject)?.name || ''}
-                  className={classes.find(c => c.id === selectedClass)?.name || ''}
-                  termName={terms.find(t => t.id === selectedTerm)?.name || ''}
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <RichQuestionEditor
+                      questions={questions}
+                      onQuestionsChange={setQuestions}
+                      title={title}
+                      subjectName={subjects.find(s => s.id === selectedSubject)?.name || ''}
+                      className={classes.find(c => c.id === selectedClass)?.name || ''}
+                      termName={terms.find(t => t.id === selectedTerm)?.name || ''}
+                    />
+                  </div>
+                  <div>
+                    <EditablePreview
+                      questions={questions}
+                      title={title}
+                      subjectName={subjects.find(s => s.id === selectedSubject)?.name || ''}
+                      className={classes.find(c => c.id === selectedClass)?.name || ''}
+                      termName={terms.find(t => t.id === selectedTerm)?.name || ''}
+                    />
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="scan" className="space-y-4">

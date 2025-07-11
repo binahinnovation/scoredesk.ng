@@ -27,14 +27,19 @@ export const generateStudentId = async (options: GenerateStudentIdOptions = {}):
                            .substring(0, 15); // Limit length
       }
     } else {
-      // Try to get current user's school
+      // Try to get current user's school from profile first
       const { data: profile } = await supabase
         .from('profiles')
         .select('school_id, school_name')
         .eq('id', (await supabase.auth.getUser()).data.user?.id)
         .single();
       
-      if (profile?.school_id) {
+      if (profile?.school_name) {
+        // Use school_name from profile (prioritize this)
+        prefix = profile.school_name.toLowerCase()
+                                   .replace(/[^a-z0-9]/g, '')
+                                   .substring(0, 15);
+      } else if (profile?.school_id) {
         const { data: school } = await supabase
           .from('schools')
           .select('alias, name')
@@ -47,10 +52,6 @@ export const generateStudentId = async (options: GenerateStudentIdOptions = {}):
                              .replace(/[^a-z0-9]/g, '')
                              .substring(0, 15);
         }
-      } else if (profile?.school_name) {
-        prefix = profile.school_name.toLowerCase()
-                                   .replace(/[^a-z0-9]/g, '')
-                                   .substring(0, 15);
       }
     }
     

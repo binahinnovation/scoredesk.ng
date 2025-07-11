@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Edit, Trash2, Shield } from 'lucide-react';
+import { Users, Edit, Trash2, Shield, Eye } from 'lucide-react';
+import { toast } from "@/components/ui/use-toast";
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -13,6 +14,8 @@ import { RoleLabel } from "@/components/RoleLabel";
 import { UserStatusBadge } from "@/components/UserStatusBadge";
 import { exportUsersToExcel, exportUsersToPDF } from "@/utils/userExport";
 import { RoleAssignmentDialog } from "@/components/RoleAssignmentDialog";
+import { UserEditDialog } from "@/components/UserEditDialog";
+import { UserPasswordDialog } from "@/components/UserPasswordDialog";
 
 interface UserWithRole {
   id: string;
@@ -44,6 +47,8 @@ const ManageUsers = () => {
   const [roleTab, setRoleTab] = React.useState(ROLES[0]);
   const [selectedUser, setSelectedUser] = React.useState<UserWithRole | null>(null);
   const [showRoleDialog, setShowRoleDialog] = React.useState(false);
+  const [showEditDialog, setShowEditDialog] = React.useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = React.useState(false);
   
   const filteredUsers = users.filter(u => u.role === roleTab ||
     (roleTab === "No Role Assigned" && (!ROLES.includes(u.role)))
@@ -69,6 +74,57 @@ const ManageUsers = () => {
 
   const handleRoleUpdated = () => {
     refetch();
+  };
+
+  const handleEditUser = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setShowEditDialog(true);
+  };
+
+  const handleShowPassword = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setShowPasswordDialog(true);
+  };
+
+  const handleDeleteUser = async (user: UserWithRole) => {
+    if (!confirm(`Are you sure you want to delete user "${user.full_name || user.user_id}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // Delete user role first
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user.user_id);
+
+      if (roleError) throw roleError;
+
+      // Delete profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.user_id);
+
+      if (profileError) throw profileError;
+
+      // Note: Actual user deletion from auth.users would require admin API
+      // For now, we just remove from our tables
+
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
+        variant: "destructive",
+      });
+    }
   };
   
   if (loading) {
@@ -150,6 +206,7 @@ const ManageUsers = () => {
                       <TableHead>School</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Password</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -170,20 +227,39 @@ const ManageUsers = () => {
                             <UserStatusBadge status="Active" />
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleShowPassword(user)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => handleAssignRole(user)}
                               >
                                 <Shield className="h-4 w-4 mr-1" />
-                                Assign Role
+                                Role
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleEditUser(user)}
+                              >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteUser(user)}
+                                className="text-red-600 hover:text-red-700"
+                              >
                                 <Trash2 className="h-4 w-4 mr-1" />
                                 Delete
                               </Button>
@@ -193,7 +269,7 @@ const ManageUsers = () => {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                           No users found for {role}.
                         </TableCell>
                       </TableRow>
@@ -241,6 +317,19 @@ const ManageUsers = () => {
         onOpenChange={setShowRoleDialog}
         user={selectedUser}
         onRoleUpdated={handleRoleUpdated}
+      />
+
+      <UserEditDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        user={selectedUser}
+        onUserUpdated={refetch}
+      />
+
+      <UserPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        user={selectedUser}
       />
     </div>
   );
