@@ -456,6 +456,8 @@ export default function ResultApproval() {
                     <TableHead>Score</TableHead>
                     <TableHead>Term</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Teacher Comment</TableHead>
+                    <TableHead>Comment Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -513,6 +515,34 @@ export default function ResultApproval() {
                           )}
                         </TableCell>
                         <TableCell>
+                          <div className="max-w-xs">
+                            {result.teacher_comment ? (
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-700 line-clamp-2">
+                                  {result.teacher_comment}
+                                </p>
+                                <div className="text-xs text-muted-foreground">
+                                  {result.teacher_comment.length}/200
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-sm italic">No comment</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {result.teacher_comment ? (
+                            <Badge variant={
+                              result.comment_status === 'approved' ? 'default' :
+                              result.comment_status === 'rejected' ? 'destructive' : 'secondary'
+                            }>
+                              {result.comment_status}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           {!result.is_approved ? (
                             <div className="flex gap-2">
                               <Button
@@ -544,6 +574,30 @@ export default function ResultApproval() {
                               <X className="h-3 w-3 mr-1" />
                               Unapprove
                             </Button>
+                          )}
+                          
+                          {/* Comment approval actions for EO/Principal */}
+                          {result.teacher_comment && result.comment_status === 'pending' && (
+                            <div className="flex gap-1 mt-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateCommentStatus(result.id, 'approved')}
+                                disabled={approving.includes(result.id)}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                ✓ Comment
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateCommentStatus(result.id, 'rejected')}
+                                disabled={approving.includes(result.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                ✗ Comment
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>

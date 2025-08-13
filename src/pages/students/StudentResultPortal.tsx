@@ -358,6 +358,7 @@ const StudentResultPortal = () => {
                       <th className="border border-gray-300 px-4 py-2 text-center">Max Score</th>
                       <th className="border border-gray-300 px-4 py-2 text-center">Percentage</th>
                       <th className="border border-gray-300 px-4 py-2 text-center">Grade</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left">Teacher's Comment</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -383,6 +384,9 @@ const StudentResultPortal = () => {
                           </td>
                           <td className={`border border-gray-300 px-4 py-2 text-center font-bold ${gradeInfo.color}`}>
                             {gradeInfo.grade}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-sm italic">
+                            {result.teacher_comment || '-'}
                           </td>
                         </tr>
                       );

@@ -141,14 +141,14 @@ export default function StudentAcademicReport() {
 
       // Mock academic results (in real implementation, fetch from database)
       const mockResults: StudentResult[] = [
-        { subject_name: 'Mathematics', subject_code: 'MTH', ca1_score: 18, ca2_score: 17, exam_score: 65, total_score: 100, percentage: 88, grade: 'A+', position: 2 },
-        { subject_name: 'English Language', subject_code: 'ENG', ca1_score: 16, ca2_score: 18, exam_score: 58, total_score: 100, percentage: 82, grade: 'A', position: 5 },
-        { subject_name: 'Physics', subject_code: 'PHY', ca1_score: 17, ca2_score: 16, exam_score: 62, total_score: 100, percentage: 85, grade: 'A', position: 3 },
-        { subject_name: 'Chemistry', subject_code: 'CHE', ca1_score: 15, ca2_score: 17, exam_score: 59, total_score: 100, percentage: 81, grade: 'A', position: 4 },
-        { subject_name: 'Biology', subject_code: 'BIO', ca1_score: 19, ca2_score: 18, exam_score: 67, total_score: 100, percentage: 92, grade: 'A+', position: 1 },
-        { subject_name: 'Computer Science', subject_code: 'CSC', ca1_score: 18, ca2_score: 19, exam_score: 68, total_score: 100, percentage: 93, grade: 'A+', position: 1 },
-        { subject_name: 'Civic Education', subject_code: 'CVE', ca1_score: 16, ca2_score: 17, exam_score: 60, total_score: 100, percentage: 83, grade: 'A', position: 6 },
-        { subject_name: 'Economics', subject_code: 'ECO', ca1_score: 17, ca2_score: 16, exam_score: 63, total_score: 100, percentage: 86, grade: 'A', position: 2 }
+        { subject_name: 'Mathematics', subject_code: 'MTH', ca1_score: 18, ca2_score: 17, exam_score: 65, total_score: 100, percentage: 88, grade: 'A+', position: 2, teacher_comment: 'Excellent problem-solving skills. Keep up the good work!' },
+        { subject_name: 'English Language', subject_code: 'ENG', ca1_score: 16, ca2_score: 18, exam_score: 58, total_score: 100, percentage: 82, grade: 'A', position: 5, teacher_comment: 'Good comprehension. Work on essay writing structure.' },
+        { subject_name: 'Physics', subject_code: 'PHY', ca1_score: 17, ca2_score: 16, exam_score: 62, total_score: 100, percentage: 85, grade: 'A', position: 3, teacher_comment: 'Strong understanding of concepts. Practice more calculations.' },
+        { subject_name: 'Chemistry', subject_code: 'CHE', ca1_score: 15, ca2_score: 17, exam_score: 59, total_score: 100, percentage: 81, grade: 'A', position: 4, teacher_comment: 'Good laboratory skills. Focus on chemical equations.' },
+        { subject_name: 'Biology', subject_code: 'BIO', ca1_score: 19, ca2_score: 18, exam_score: 67, total_score: 100, percentage: 92, grade: 'A+', position: 1, teacher_comment: 'Outstanding performance! Excellent grasp of biological processes.' },
+        { subject_name: 'Computer Science', subject_code: 'CSC', ca1_score: 18, ca2_score: 19, exam_score: 68, total_score: 100, percentage: 93, grade: 'A+', position: 1, teacher_comment: 'Exceptional programming skills. Great logical thinking.' },
+        { subject_name: 'Civic Education', subject_code: 'CVE', ca1_score: 16, ca2_score: 17, exam_score: 60, total_score: 100, percentage: 83, grade: 'A', position: 6, teacher_comment: 'Good civic awareness. Participate more in discussions.' },
+        { subject_name: 'Economics', subject_code: 'ECO', ca1_score: 17, ca2_score: 16, exam_score: 63, total_score: 100, percentage: 86, grade: 'A', position: 2, teacher_comment: 'Strong analytical skills. Excellent understanding of economic principles.' }
       ];
 
       // Calculate overall statistics
