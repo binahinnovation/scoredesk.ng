@@ -38,6 +38,10 @@ import ProfileSettings from "./pages/ProfileSettings";
 import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
 import QuestionPaperManagement from "./pages/questions/QuestionPaperManagement";
 
+// Attendance Pages
+import MarkAttendancePage from "./pages/attendance/MarkAttendancePage";
+import AttendanceSummaryPage from "./pages/attendance/AttendanceSummaryPage";
+
 // New Messaging Pages
 import InboxPage from "./pages/messages/InboxPage";
 import SentPage from "./pages/messages/SentPage";
