@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, X, Search, Filter } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +82,8 @@ export default function ResultApproval() {
           approved_at,
           created_at,
           teacher_id,
+          teacher_comment,
+          comment_status,
           student_id,
           subject_id,
           assessment_id,

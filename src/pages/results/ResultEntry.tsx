@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,6 +49,7 @@ interface Result {
   term_id: string;
   assessment_id: string;
   score: number;
+  teacher_comment?: string;
 }
 
 export default function ResultEntry() {
@@ -149,7 +151,7 @@ export default function ResultEntry() {
     try {
       const { data: existingResults } = await supabase
         .from("results")
-        .select("*")
+        .select("*, teacher_comment, comment_status")
         .eq("subject_id", selectedSubject)
         .eq("assessment_id", selectedAssessment)
         .eq("term_id", selectedTerm);
@@ -207,6 +209,33 @@ export default function ResultEntry() {
     });
   };
 
+  const updateComment = (studentId: string, comment: string) => {
+    // Trim and limit comment length
+    const trimmedComment = comment.trim().substring(0, 200);
+    
+    setResults(prev => {
+      const existing = prev.find(r => r.student_id === studentId);
+      if (existing) {
+        return prev.map(r => 
+          r.student_id === studentId 
+            ? { ...r, teacher_comment: trimmedComment }
+            : r
+        );
+      } else {
+        // Create new result without id field - let database generate it
+        const newResult = {
+          student_id: studentId,
+          subject_id: selectedSubject,
+          assessment_id: selectedAssessment,
+          term_id: selectedTerm,
+          score: 0,
+          teacher_comment: trimmedComment
+        };
+        return [...prev, newResult];
+      }
+    });
+  };
+
   const saveResults = async () => {
     if (!user || !selectedSubject || !selectedAssessment || !selectedTerm) {
       toast({
@@ -226,12 +255,16 @@ export default function ResultEntry() {
         assessment_id: result.assessment_id,
         term_id: result.term_id,
         score: result.score,
+        teacher_comment: result.teacher_comment || null,
+        comment_status: result.teacher_comment?.trim() ? 'pending' : 'pending',
         teacher_id: user.id,
         is_approved: false
       }));
 
       const existingResults = results.filter(result => result.id).map(result => ({
         ...result,
+        teacher_comment: result.teacher_comment || null,
+        comment_status: result.teacher_comment?.trim() ? 'pending' : 'pending',
         teacher_id: user.id,
         is_approved: false
       }));
@@ -416,6 +449,7 @@ export default function ResultEntry() {
                       <TableHead>Student Name</TableHead>
                       <TableHead>Class</TableHead>
                       <TableHead>Score (Max: {assessments.find(a => a.id === selectedAssessment)?.max_score})</TableHead>
+                      <TableHead>Teacher Comment</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -437,6 +471,21 @@ export default function ResultEntry() {
                               className="w-24"
                               placeholder="0"
                             />
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <Textarea
+                                placeholder="Performance comment..."
+                                value={existingResult?.teacher_comment || ""}
+                                onChange={(e) => updateComment(student.id, e.target.value)}
+                                className="min-h-[60px] text-sm resize-none"
+                                maxLength={200}
+                                rows={2}
+                              />
+                              <div className="text-xs text-muted-foreground text-right">
+                                {(existingResult?.teacher_comment || "").length}/200
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             {existingResult?.score !== undefined ? (
