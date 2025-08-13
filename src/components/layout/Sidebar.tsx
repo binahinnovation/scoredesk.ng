@@ -365,6 +365,44 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     </Button>
                   )}
                 </NavLink>
+
+                <NavLink to="/attendance/mark">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Users className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Mark Attendance</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/attendance/summary">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <BarChart3 className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Attendance Summary</span>
+                    </Button>
+                  )}
+                </NavLink>
               </div>
             </div>
 

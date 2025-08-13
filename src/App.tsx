@@ -176,6 +176,18 @@ const AppRoutes = () => {
         <Route path="messages/drafts" element={<DraftsPage />} />
         <Route path="messages/compose" element={<ComposeMessagePage />} />
         <Route path="messages/:id" element={<MessageViewPage />} />
+
+        {/* Attendance Routes */}
+        <Route path="attendance/mark" element={
+          <ProtectedRoute requiredPermission="Attendance Management">
+            <MarkAttendancePage />
+          </ProtectedRoute>
+        } />
+        <Route path="attendance/summary" element={
+          <ProtectedRoute requiredPermission="Attendance Management">
+            <AttendanceSummaryPage />
+          </ProtectedRoute>
+        } />
       </Route>
       
       <Route path="*" element={<NotFound />} />
