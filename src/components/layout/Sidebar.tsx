@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,11 @@ import {
   ChevronRight,
   School,
   ChartBar,
-  ExternalLink
+  ExternalLink,
+  Mail,
+  Send,
+  Inbox,
+  PenTool
 } from "lucide-react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -276,6 +279,92 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     )}
                   </NavLink>
                 )}
+              </div>
+            </div>
+
+            <div className="px-3 py-2">
+              <h2 className={cn(
+                "mb-2 px-4 font-semibold tracking-tight transition-all duration-300",
+                open ? "text-lg opacity-100" : "text-xs opacity-0 h-0"
+              )}>
+                Communication
+              </h2>
+              <div className="space-y-1">
+                <NavLink to="/messages/inbox">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Inbox className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Inbox</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/messages/sent">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <Send className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Sent</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/messages/drafts">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <FileText className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Drafts</span>
+                    </Button>
+                  )}
+                </NavLink>
+
+                <NavLink to="/messages/compose">
+                  {({ isActive }) => (
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                        isActive && "bg-emerald-800 text-white",
+                        !open && "px-0 justify-center"
+                      )}
+                      size="sm"
+                    >
+                      <PenTool className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                      <span className={cn("transition-all duration-300", 
+                        open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                      )}>Compose</span>
+                    </Button>
+                  )}
+                </NavLink>
               </div>
             </div>
 
