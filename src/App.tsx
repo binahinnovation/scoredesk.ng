@@ -38,6 +38,13 @@ import ProfileSettings from "./pages/ProfileSettings";
 import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
 import QuestionPaperManagement from "./pages/questions/QuestionPaperManagement";
 
+// New Messaging Pages
+import InboxPage from "./pages/messages/InboxPage";
+import SentPage from "./pages/messages/SentPage";
+import DraftsPage from "./pages/messages/DraftsPage";
+import ComposeMessagePage from "./pages/messages/ComposeMessagePage";
+import MessageViewPage from "./pages/messages/MessageViewPage";
+
 // Create a new client
 const queryClient = new QueryClient();
 
@@ -162,6 +169,13 @@ const AppRoutes = () => {
             <QuestionPaperManagement />
           </ProtectedRoute>
         } />
+
+        {/* New Messaging Routes */}
+        <Route path="messages/inbox" element={<InboxPage />} />
+        <Route path="messages/sent" element={<SentPage />} />
+        <Route path="messages/drafts" element={<DraftsPage />} />
+        <Route path="messages/compose" element={<ComposeMessagePage />} />
+        <Route path="messages/:id" element={<MessageViewPage />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />
