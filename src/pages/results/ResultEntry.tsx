@@ -12,6 +12,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
 
 interface Student {
   id: string;
@@ -67,6 +68,19 @@ export default function ResultEntry() {
   const [results, setResults] = useState<Result[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
+  const [editReason, setEditReason] = useState("");
+
+  // Fetch user's school ID for audit logging
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (user) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [user]);
 
   useEffect(() => {
     if (hasPermission("Result Upload")) {
@@ -248,6 +262,19 @@ export default function ResultEntry() {
 
     setSaving(true);
     try {
+      // Fetch existing results for audit logging
+      const existingResultsForLogging = new Map();
+      for (const result of results.filter(r => r.id)) {
+        const { data: oldRecord } = await supabase
+          .from('results')
+          .select('*')
+          .eq('id', result.id)
+          .single();
+        if (oldRecord) {
+          existingResultsForLogging.set(result.id, oldRecord);
+        }
+      }
+
       // Separate new and existing results
       const newResults = results.filter(result => !result.id).map(result => ({
         student_id: result.student_id,
@@ -272,25 +299,66 @@ export default function ResultEntry() {
       console.log("New results to insert:", newResults);
       console.log("Existing results to update:", existingResults);
 
+      let insertedResults: any[] = [];
+      let updatedResults: any[] = [];
+
       // Insert new results
       if (newResults.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from("results")
-          .insert(newResults);
+          .insert(newResults)
+          .select();
         
         if (insertError) throw insertError;
+        insertedResults = insertData || [];
       }
 
       // Update existing results
       if (existingResults.length > 0) {
-        const { error: updateError } = await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from("results")
           .upsert(existingResults, { 
             onConflict: "id",
             ignoreDuplicates: false 
-          });
+          })
+          .select();
         
         if (updateError) throw updateError;
+        updatedResults = updateData || [];
+      }
+
+      // Log all operations
+      if (user && userSchoolId) {
+        // Log inserts
+        for (const newRecord of insertedResults) {
+          await logEdit({
+            schoolId: userSchoolId,
+            actorId: user.id,
+            actionType: 'insert',
+            tableName: 'results',
+            recordId: newRecord.id,
+            oldValue: null,
+            newValue: newRecord,
+            reason: editReason || 'Result entry',
+          });
+        }
+
+        // Log updates
+        for (const updatedRecord of updatedResults) {
+          const oldRecord = existingResultsForLogging.get(updatedRecord.id);
+          if (oldRecord) {
+            await logEdit({
+              schoolId: userSchoolId,
+              actorId: user.id,
+              actionType: 'update',
+              tableName: 'results',
+              recordId: updatedRecord.id,
+              oldValue: oldRecord,
+              newValue: updatedRecord,
+              reason: editReason || 'Result update',
+            });
+          }
+        }
       }
 
       toast({
@@ -299,6 +367,7 @@ export default function ResultEntry() {
       });
       
       await fetchExistingResults();
+      setEditReason(""); // Reset reason after save
     } catch (error: any) {
       console.error("Error saving results:", error);
       toast({
@@ -431,6 +500,17 @@ export default function ResultEntry() {
           {/* Results Table */}
           {selectedClass && selectedSubject && selectedAssessment && selectedTerm && (
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="editReason">Reason for changes (Optional)</Label>
+                <Textarea
+                  id="editReason"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  placeholder="e.g., Corrected scores, added comments, updated assessments"
+                  rows={2}
+                />
+              </div>
+
               <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
                   Enter scores for {subjects.find(s => s.id === selectedSubject)?.name} - {assessments.find(a => a.id === selectedAssessment)?.name}

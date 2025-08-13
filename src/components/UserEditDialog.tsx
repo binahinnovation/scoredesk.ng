@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { useAuth } from '@/hooks/use-auth';
 
 interface UserWithRole {
   id: string;
@@ -43,16 +45,30 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
   user,
   onUserUpdated
 }) => {
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [generatingPassword, setGeneratingPassword] = useState(false);
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
+  const [editReason, setEditReason] = useState('');
   const [formData, setFormData] = useState({
     full_name: '',
     school_name: '',
     role: ''
   });
   const { toast } = useToast();
+
+  // Fetch current user's school ID for audit logging
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (currentUser) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [currentUser]);
 
   useEffect(() => {
     if (user && open) {
@@ -63,6 +79,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
       });
       setNewPassword('');
       setShowPassword(false);
+      setEditReason('');
     }
   }, [user, open]);
 
@@ -84,6 +101,20 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
 
     setLoading(true);
     try {
+      // Fetch old profile data for audit logging
+      const { data: oldProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.user_id)
+        .single();
+
+      // Fetch old role data for audit logging
+      const { data: oldRole } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', user.user_id)
+        .single();
+
       // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
@@ -95,6 +126,13 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
         .eq('id', user.user_id);
 
       if (profileError) throw profileError;
+
+      // Fetch updated profile for audit logging
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.user_id)
+        .single();
 
       // Update role
       const { error: roleError } = await supabase
@@ -123,6 +161,41 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
             variant: "destructive",
           });
         }
+      }
+
+      // Fetch updated role for audit logging
+      const { data: newRole } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', user.user_id)
+        .single();
+
+      // Log profile update
+      if (currentUser && userSchoolId && oldProfile && newProfile) {
+        await logEdit({
+          schoolId: userSchoolId,
+          actorId: currentUser.id,
+          actionType: 'update',
+          tableName: 'profiles',
+          recordId: user.user_id,
+          oldValue: oldProfile,
+          newValue: newProfile,
+          reason: editReason || 'Profile update',
+        });
+      }
+
+      // Log role update
+      if (currentUser && userSchoolId && newRole) {
+        await logEdit({
+          schoolId: userSchoolId,
+          actorId: currentUser.id,
+          actionType: oldRole ? 'update' : 'insert',
+          tableName: 'user_roles',
+          recordId: newRole.id,
+          oldValue: oldRole,
+          newValue: newRole,
+          reason: editReason || 'Role assignment',
+        });
       }
 
       toast({
@@ -234,6 +307,17 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
                 Make sure to share this password with the user securely.
               </p>
             )}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="editReason">Reason for changes (Optional)</Label>
+            <Textarea
+              id="editReason"
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              placeholder="e.g., Corrected user information, role change requested, password reset"
+              rows={2}
+            />
           </div>
         </div>
 

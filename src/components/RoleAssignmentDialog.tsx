@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types/user';
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { useAuth } from '@/hooks/use-auth';
 
 interface RoleAssignmentDialogProps {
   open: boolean;
@@ -32,13 +34,28 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
   user,
   onRoleUpdated
 }) => {
+  const { user: currentUser } = useAuth();
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
+  const [roleReason, setRoleReason] = useState('');
   const { toast } = useToast();
+
+  // Fetch current user's school ID for audit logging
+  React.useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (currentUser) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [currentUser]);
 
   React.useEffect(() => {
     if (user && open) {
       setSelectedRole(user.role || '');
+      setRoleReason('');
     }
   }, [user, open]);
 
@@ -54,24 +71,48 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
         .eq('user_id', user.user_id)
         .single();
 
+      let actionType: 'insert' | 'update' = 'insert';
+      let newRoleRecord: any;
+
       if (existingRole) {
         // Update existing role
-        const { error } = await supabase
+        actionType = 'update';
+        const { data, error } = await supabase
           .from('user_roles')
           .update({ role: selectedRole as UserRole })
-          .eq('user_id', user.user_id);
+          .eq('user_id', user.user_id)
+          .select()
+          .single();
 
         if (error) throw error;
+        newRoleRecord = data;
       } else {
         // Insert new role
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('user_roles')
           .insert({
             user_id: user.user_id,
             role: selectedRole as UserRole
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        newRoleRecord = data;
+      }
+
+      // Log the role assignment
+      if (currentUser && userSchoolId && newRoleRecord) {
+        await logEdit({
+          schoolId: userSchoolId,
+          actorId: currentUser.id,
+          actionType,
+          tableName: 'user_roles',
+          recordId: newRoleRecord.id,
+          oldValue: existingRole,
+          newValue: newRoleRecord,
+          reason: roleReason || `Role ${actionType === 'update' ? 'updated' : 'assigned'} to ${selectedRole}`,
+        });
       }
 
       toast({
@@ -98,12 +139,33 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
 
     setIsAssigning(true);
     try {
+      // Fetch role before deletion for audit logging
+      const { data: roleToDelete } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', user.user_id)
+        .single();
+
       const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', user.user_id);
 
       if (error) throw error;
+
+      // Log the role removal
+      if (currentUser && userSchoolId && roleToDelete) {
+        await logEdit({
+          schoolId: userSchoolId,
+          actorId: currentUser.id,
+          actionType: 'delete',
+          tableName: 'user_roles',
+          recordId: roleToDelete.id,
+          oldValue: roleToDelete,
+          newValue: null,
+          reason: roleReason || `Role removed from ${user.full_name}`,
+        });
+      }
 
       toast({
         title: "Success",
@@ -149,6 +211,17 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="roleReason">Reason for role change (Optional)</Label>
+            <Textarea
+              id="roleReason"
+              value={roleReason}
+              onChange={(e) => setRoleReason(e.target.value)}
+              placeholder="e.g., Promotion, department transfer, new responsibilities"
+              rows={2}
+            />
           </div>
         </div>
 

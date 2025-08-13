@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Plus, Edit, Trash2, Search, Download, FileText, RefreshCw } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
 import { generateStudentId, validateStudentId } from '@/utils/studentIdGenerator';
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Student {
   id: string;
@@ -44,11 +46,13 @@ interface Class {
 const ITEMS_PER_PAGE = 10;
 
 export default function StudentManagement() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -63,12 +67,24 @@ export default function StudentManagement() {
     guardian_name: '',
     guardian_phone: '',
     guardian_email: '',
-    status: 'Active'
+    status: 'Active',
+    reason: '' // Add reason field for audit trail
   });
   const [isGeneratingId, setIsGeneratingId] = useState(false);
 
   const { hasPermission } = useUserRole();
   const queryClient = useQueryClient();
+
+  // Fetch user's school ID for audit logging
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (user) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [user]);
 
   // Fetch students with class information
   const { data: students = [], isLoading } = useQuery({
@@ -109,9 +125,12 @@ export default function StudentManagement() {
       // Auto-generate student ID if not provided
       let finalStudentData = { ...studentData };
       
+      // Remove reason from student data as it's not a database field
+      const { reason, ...dbStudentData } = finalStudentData;
+      
       if (!studentData.student_id.trim()) {
         try {
-          finalStudentData.student_id = await generateStudentId({
+          dbStudentData.student_id = await generateStudentId({
             schoolId: studentData.class_id ? undefined : undefined // Will use current user's school
           });
         } catch (error) {
@@ -127,21 +146,35 @@ export default function StudentManagement() {
 
       const { data, error } = await supabase
         .from('students')
-        .insert([finalStudentData])
+        .insert([dbStudentData])
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { newRecord: data, reason: studentData.reason };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ newRecord, reason }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast({ 
         title: "Student created successfully",
-        description: `Student ID: ${data.student_id}`
+        description: `Student ID: ${newRecord.student_id}`
       });
       setIsDialogOpen(false);
       resetForm();
+
+      // Log the insert operation
+      if (user && userSchoolId) {
+        logEdit({
+          schoolId: userSchoolId,
+          actorId: user.id,
+          actionType: 'insert',
+          tableName: 'students',
+          recordId: newRecord.id,
+          oldValue: null,
+          newValue: newRecord,
+          reason: reason || null,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -155,21 +188,46 @@ export default function StudentManagement() {
   // Update student mutation
   const updateStudentMutation = useMutation({
     mutationFn: async ({ id, ...studentData }: typeof formData & { id: string }) => {
+      // Fetch old value before update
+      const { data: oldRecord, error: fetchError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (fetchError) console.error("Failed to fetch old student record for logging:", fetchError);
+
+      // Remove reason from student data as it's not a database field
+      const { reason, ...dbStudentData } = studentData;
+
       const { data, error } = await supabase
         .from('students')
-        .update(studentData)
+        .update(dbStudentData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { newRecord: data, oldRecord, reason };
     },
-    onSuccess: () => {
+    onSuccess: ({ newRecord, oldRecord, reason }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast({ title: "Student updated successfully" });
       setIsDialogOpen(false);
       resetForm();
+
+      // Log the update operation
+      if (user && userSchoolId) {
+        logEdit({
+          schoolId: userSchoolId,
+          actorId: user.id,
+          actionType: 'update',
+          tableName: 'students',
+          recordId: newRecord.id,
+          oldValue: oldRecord,
+          newValue: newRecord,
+          reason: reason || null,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -183,16 +241,39 @@ export default function StudentManagement() {
   // Delete student mutation
   const deleteStudentMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Fetch old value before delete
+      const { data: oldRecord, error: fetchError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (fetchError) console.error("Failed to fetch old student record for logging:", fetchError);
+
       const { error } = await supabase
         .from('students')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      return { deletedRecordId: id, oldRecord };
     },
-    onSuccess: () => {
+    onSuccess: ({ deletedRecordId, oldRecord }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast({ title: "Student deleted successfully" });
+
+      // Log the delete operation
+      if (user && userSchoolId) {
+        logEdit({
+          schoolId: userSchoolId,
+          actorId: user.id,
+          actionType: 'delete',
+          tableName: 'students',
+          recordId: deletedRecordId,
+          oldValue: oldRecord,
+          newValue: null,
+          reason: 'Student deleted', // Default reason for deletes
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -218,7 +299,8 @@ export default function StudentManagement() {
       guardian_name: '',
       guardian_phone: '',
       guardian_email: '',
-      status: 'Active'
+      status: 'Active',
+      reason: ''
     });
     setEditingStudent(null);
   };
@@ -623,6 +705,17 @@ export default function StudentManagement() {
                     type="email"
                     value={formData.guardian_email}
                     onChange={(e) => setFormData({ ...formData, guardian_email: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="reason">Reason for change (Optional)</Label>
+                  <Textarea
+                    id="reason"
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    placeholder="e.g., Corrected information, new enrollment, data update"
+                    rows={2}
                   />
                 </div>
 

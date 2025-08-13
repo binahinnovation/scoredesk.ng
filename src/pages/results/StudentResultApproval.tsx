@@ -11,6 +11,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
 
 interface StudentResult {
   student_id: string;
@@ -37,6 +38,7 @@ interface StudentResult {
 export default function StudentResultApproval() {
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<StudentResult[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,6 +50,18 @@ export default function StudentResultApproval() {
   const [loadingData, setLoadingData] = useState(true);
   const [approving, setApproving] = useState<string[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [approvalReason, setApprovalReason] = useState("");
+
+  // Fetch user's school ID for audit logging
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (user) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [user]);
 
   useEffect(() => {
     if (hasPermission("Result Approval")) {
@@ -217,6 +231,12 @@ export default function StudentResultApproval() {
         return;
       }
 
+      // Fetch old records for audit logging
+      const { data: oldRecords } = await supabase
+        .from('results')
+        .select('*')
+        .in('id', pendingResultIds);
+
       const { error } = await supabase
         .from("results")
         .update({
@@ -227,6 +247,32 @@ export default function StudentResultApproval() {
         .in("id", pendingResultIds);
 
       if (error) throw error;
+
+      // Fetch updated records for audit logging
+      const { data: newRecords } = await supabase
+        .from('results')
+        .select('*')
+        .in('id', pendingResultIds);
+
+      // Log all approval operations
+      if (user && userSchoolId && oldRecords && newRecords) {
+        for (let i = 0; i < oldRecords.length; i++) {
+          const oldRecord = oldRecords[i];
+          const newRecord = newRecords.find(nr => nr.id === oldRecord.id);
+          if (newRecord) {
+            await logEdit({
+              schoolId: userSchoolId,
+              actorId: user.id,
+              actionType: 'update',
+              tableName: 'results',
+              recordId: newRecord.id,
+              oldValue: oldRecord,
+              newValue: newRecord,
+              reason: approvalReason || `Bulk approved results for ${student.student_name}`,
+            });
+          }
+        }
+      }
 
       toast({
         title: "Success",
@@ -279,6 +325,12 @@ export default function StudentResultApproval() {
         return;
       }
 
+      // Fetch old records for audit logging
+      const { data: oldRecords } = await supabase
+        .from('results')
+        .select('*')
+        .in('id', allPendingIds);
+
       const { error } = await supabase
         .from("results")
         .update({
@@ -290,6 +342,32 @@ export default function StudentResultApproval() {
 
       if (error) throw error;
 
+      // Fetch updated records for audit logging
+      const { data: newRecords } = await supabase
+        .from('results')
+        .select('*')
+        .in('id', allPendingIds);
+
+      // Log all bulk approval operations
+      if (user && userSchoolId && oldRecords && newRecords) {
+        for (let i = 0; i < oldRecords.length; i++) {
+          const oldRecord = oldRecords[i];
+          const newRecord = newRecords.find(nr => nr.id === oldRecord.id);
+          if (newRecord) {
+            await logEdit({
+              schoolId: userSchoolId,
+              actorId: user.id,
+              actionType: 'update',
+              tableName: 'results',
+              recordId: newRecord.id,
+              oldValue: oldRecord,
+              newValue: newRecord,
+              reason: approvalReason || 'Bulk approval of results',
+            });
+          }
+        }
+      }
+
       toast({
         title: "Success",
         description: `Bulk approved ${allPendingIds.length} results`,
@@ -300,6 +378,7 @@ export default function StudentResultApproval() {
       if (currentTerm) {
         await fetchStudentResults(currentTerm.id);
       }
+      setApprovalReason(""); // Reset reason after bulk approval
     } catch (error: any) {
       console.error("Error bulk approving results:", error);
       toast({
@@ -364,6 +443,18 @@ export default function StudentResultApproval() {
           <CardTitle>Review and Approve Results by Student</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Approval Reason */}
+          <div>
+            <Label htmlFor="approvalReason">Reason for approval/changes (Optional)</Label>
+            <Textarea
+              id="approvalReason"
+              value={approvalReason}
+              onChange={(e) => setApprovalReason(e.target.value)}
+              placeholder="e.g., Results verified, corrections made, quality check completed"
+              rows={2}
+            />
+          </div>
+
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>

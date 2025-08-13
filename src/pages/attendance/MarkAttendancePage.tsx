@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
 
 interface Student {
   id: string;
@@ -38,11 +39,24 @@ interface Class {
 export default function MarkAttendancePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [attendanceRecords, setAttendanceRecords] = useState<Map<string, AttendanceRecord>>(new Map());
   const [saving, setSaving] = useState(false);
+  const [attendanceReason, setAttendanceReason] = useState('');
+
+  // Fetch user's school ID for audit logging
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      if (user) {
+        const schoolId = await getCurrentUserSchoolId();
+        setUserSchoolId(schoolId);
+      }
+    };
+    fetchSchoolId();
+  }, [user]);
 
   // Fetch classes
   const { data: classes = [] } = useQuery({
@@ -147,6 +161,21 @@ export default function MarkAttendancePage() {
         .single();
       
       if (!profile) throw new Error('Profile not found');
+
+      // Fetch existing attendance records for audit logging
+      const existingRecordsMap = new Map();
+      for (const record of records) {
+        if (record.id) {
+          const { data: oldRecord } = await supabase
+            .from('attendance')
+            .select('*')
+            .eq('id', record.id)
+            .single();
+          if (oldRecord) {
+            existingRecordsMap.set(record.id, oldRecord);
+          }
+        }
+      }
       
       // Prepare records for upsert
       const recordsToSave = records.map(record => ({
@@ -157,22 +186,44 @@ export default function MarkAttendancePage() {
         updated_at: new Date().toISOString()
       }));
       
-      const { error } = await supabase
+      const { data: savedRecords, error } = await supabase
         .from('attendance')
         .upsert(recordsToSave, {
           onConflict: 'student_id,date,period',
           ignoreDuplicates: false
-        });
+        })
+        .select();
       
       if (error) throw error;
-      return recordsToSave;
+      return { savedRecords: savedRecords || [], existingRecordsMap };
     },
-    onSuccess: () => {
+    onSuccess: ({ savedRecords, existingRecordsMap }) => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+
+      // Log attendance operations
+      if (user && userSchoolId) {
+        savedRecords.forEach(async (record) => {
+          const oldRecord = existingRecordsMap.get(record.id);
+          const actionType = oldRecord ? 'update' : 'insert';
+          
+          await logEdit({
+            schoolId: userSchoolId,
+            actorId: user.id,
+            actionType,
+            tableName: 'attendance',
+            recordId: record.id,
+            oldValue: oldRecord || null,
+            newValue: record,
+            reason: attendanceReason || `Attendance marked for ${selectedDate}`,
+          });
+        });
+      }
+
       toast({
         title: "Success",
         description: "Attendance saved successfully",
       });
+      setAttendanceReason(''); // Reset reason after save
     },
     onError: (error: any) => {
       toast({
@@ -265,6 +316,18 @@ export default function MarkAttendancePage() {
           <CardTitle>Attendance Details</CardTitle>
         </CardHeader>
         <CardContent>
+          <div>
+            <Label htmlFor="attendanceReason">Reason for attendance changes (Optional)</Label>
+            <Textarea
+              id="attendanceReason"
+              value={attendanceReason}
+              onChange={(e) => setAttendanceReason(e.target.value)}
+              placeholder="e.g., Regular attendance, makeup session, field trip"
+              rows={2}
+              className="mb-4"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="class">Class</Label>

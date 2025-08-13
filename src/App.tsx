@@ -37,6 +37,7 @@ import TermManagement from "./pages/settings/TermManagement";
 import ProfileSettings from "./pages/ProfileSettings";
 import QuestionPaperSubmission from "./pages/QuestionPaperSubmission";
 import QuestionPaperManagement from "./pages/questions/QuestionPaperManagement";
+import AuditLogsPage from "./pages/admin/AuditLogsPage";
 
 // Attendance Pages
 import MarkAttendancePage from "./pages/attendance/MarkAttendancePage";
@@ -190,6 +191,13 @@ const AppRoutes = () => {
         <Route path="attendance/summary" element={
           <ProtectedRoute requiredPermission="Attendance Management">
             <AttendanceSummaryPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Admin Routes */}
+        <Route path="admin/logs" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <AuditLogsPage />
           </ProtectedRoute>
         } />
       </Route>

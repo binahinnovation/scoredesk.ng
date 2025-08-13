@@ -518,6 +518,27 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     )}
                   </NavLink>
                 )}
+
+                {hasPermission("User Management") && (
+                  <NavLink to="/admin/logs">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Shield className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Audit Logs</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
               </div>
             </div>
 
