@@ -15,7 +15,7 @@ interface AuthContextType {
   userRole: UserRole | null;
   loading: boolean;
   isSuperAdmin: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; data?: any; }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; data?: any; }>;
   signup: (email: string, password: string, schoolData: SchoolData) => Promise<{ success: boolean; error?: string; data?: any; }>;
   logout: () => Promise<{ success: boolean; error?: string; }>;
 }
@@ -86,11 +86,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return isSuperAdminByEmail || isSuperAdminByFlag;
   }, [user]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          data: {
+            remember_me: rememberMe
+          }
+        }
       });
 
       if (error) {
