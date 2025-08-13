@@ -11,7 +11,6 @@ import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
 import { useAuth } from "./hooks/use-auth";
 import { useEffect } from "react";
-import { initStorage } from "./integrations/supabase/storage";
 import { AuthProvider } from "./contexts/AuthContext";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -41,23 +40,6 @@ import QuestionPaperManagement from "./pages/questions/QuestionPaperManagement";
 
 // Create a new client
 const queryClient = new QueryClient();
-
-// Initialize storage buckets with improved error handling
-const StorageInitializer = () => {
-  useEffect(() => {
-    // Initialize storage in the background without blocking the app
-    // Use a slight delay to allow the app to render first
-    const timer = setTimeout(() => {
-      initStorage().catch(() => {
-        // Silently handle failures - storage is not critical for app functionality
-      });
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  return null;
-};
 
 // Auth-only protected route component
 const AuthProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -197,7 +179,6 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AuthProvider>
-              <StorageInitializer />
               <AppRoutes />
             </AuthProvider>
           </BrowserRouter>
