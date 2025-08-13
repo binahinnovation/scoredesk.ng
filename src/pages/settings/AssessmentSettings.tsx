@@ -43,10 +43,21 @@ export default function AssessmentSettings() {
   const fetchData = async () => {
     setLoadingData(true);
     try {
+      // Get current user's school_id from profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", userRole?.user_id)
+        .single();
+
+      if (profileError) throw profileError;
+      const schoolId = profileData?.school_id;
+
       // Fetch assessments
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from("assessments")
         .select("*")
+        .eq("school_id", schoolId)
         .order("type", { ascending: true });
 
       if (assessmentsError) throw assessmentsError;
@@ -57,7 +68,8 @@ export default function AssessmentSettings() {
         .from("settings")
         .select("setting_value")
         .eq("setting_key", "grade_boundaries")
-        .single();
+        .eq("school_id", schoolId)
+        .maybeSingle();
 
       if (!settingsError && settingsData?.setting_value) {
         const boundaries = settingsData.setting_value as { [key: string]: number };
@@ -129,7 +141,7 @@ export default function AssessmentSettings() {
         .upsert({ 
           setting_key: "grade_boundaries", 
           setting_value: gradeBoundaries as any,
-          school_id: null
+          school_id: userRole?.school_id
         });
 
       if (error) throw error;

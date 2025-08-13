@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PenTool, Send, Save, Paperclip } from 'lucide-react';
-import { Editor } from '@tinymce/tinymce-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -20,7 +19,6 @@ interface Profile {
 export default function ComposeMessagePage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const editorRef = useRef<any>(null);
 
   const [recipientId, setRecipientId] = useState<string>('');
   const [subject, setSubject] = useState<string>('');
@@ -134,9 +132,6 @@ export default function ComposeMessagePage() {
       setRecipientId('');
       setSubject('');
       setBody('');
-      if (editorRef.current) {
-        editorRef.current.setContent('');
-      }
       setAttachments([]);
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -198,51 +193,28 @@ export default function ComposeMessagePage() {
 
           <div className="space-y-2">
             <Label htmlFor="body">Message Body</Label>
-            <Editor
-              apiKey="4p9rrdmnwohm65wffmzhj0mlmk7gt99cw2c47btmqh5rakzm"
-              onInit={(evt, editor) => editorRef.current = editor}
+            <Textarea
+              id="body"
               value={body}
-              onEditorChange={(content) => setBody(content)}
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: [
-                  'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
-                  'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                  'insertdatetime', 'media', 'table', 'preview', 'help', 'wordcount'
-                ],
-                toolbar: 'undo redo | blocks | ' +
-                         'bold italic forecolor | alignleft aligncenter ' +
-                         'alignright alignjustify | bullist numlist outdent indent | ' +
-                         'removeformat | help',
-                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-                placeholder: 'Compose your message here...',
-                readonly: sending,
-              }}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Compose your message here..."
+              disabled={sending}
+              className="min-h-[200px] resize-y"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="attachments">Attachments</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="attachments"
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                disabled={sending}
-                className="flex-1"
-              />
-              <Paperclip className="h-4 w-4 text-muted-foreground" />
-            </div>
+            <Input
+              id="attachments"
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              disabled={sending}
+            />
             {attachments.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                <p className="font-medium">Selected files:</p>
-                <ul className="list-disc list-inside">
-                  {attachments.map((file, index) => (
-                    <li key={index}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</li>
-                  ))}
-                </ul>
+                Selected files: {attachments.map(file => file.name).join(', ')}
               </div>
             )}
           </div>
@@ -251,10 +223,10 @@ export default function ComposeMessagePage() {
             <Button
               variant="outline"
               onClick={() => handleSendMessage(true)}
-              disabled={sending || (!subject.trim() && !body.trim())}
+              disabled={sending || !subject.trim() && !body.trim()}
             >
               <Save className="h-4 w-4 mr-2" />
-              {sending ? "Saving..." : "Save as Draft"}
+              {sending ? "Saving Draft..." : "Save as Draft"}
             </Button>
             <Button
               onClick={() => handleSendMessage(false)}
