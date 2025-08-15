@@ -40,7 +40,7 @@ export default function SettingsPage() {
   }, [user]);
 
   const fetchProfile = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     try {
       // Get profile data
@@ -48,9 +48,9 @@ export default function SettingsPage() {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError && profileError.code !== "PGRST116") {
+      if (profileError) {
         throw profileError;
       }
 
