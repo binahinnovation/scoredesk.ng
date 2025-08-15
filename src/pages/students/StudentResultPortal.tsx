@@ -80,15 +80,15 @@ const StudentResultPortal = () => {
       const termId = terms[0].id;
 
       // Verify and mark scratch card as used
-      const { data: scratchCard, error: cardError } = await supabase
+      const { data: scratchCardData, error: cardError } = await supabase
         .from('scratch_cards')
         .select('*')
         .eq('pin', pin)
         .eq('status', 'Active')
-        .eq('used_for_result_check', false)
-        .single();
+        .or('used_for_result_check.is.null,used_for_result_check.eq.false')
+        .maybeSingle();
 
-      if (cardError || !scratchCard) {
+      if (cardError || !scratchCardData) {
         toast({
           title: "Invalid PIN",
           description: "The PIN you entered is invalid or has already been used for result checking.",
@@ -97,95 +97,90 @@ const StudentResultPortal = () => {
         return;
       }
 
-      // Mark scratch card as used for result checking
-      const { error: markUsedError } = await supabase.rpc('mark_scratch_card_used', {
-        card_pin: pin
-      });
-
-      if (markUsedError) {
-        console.error('Error marking scratch card as used:', markUsedError);
-        // Continue anyway - don't block result viewing for this
-      }
-
       // Enhanced student lookup with multiple strategies
       const trimmedId = studentId.trim();
       console.log("Looking up student with ID:", trimmedId);
       
-      // Strategy 1: Exact match (works for both old and new formats)
-      let { data: studentData, error: studentError } = await supabase
+      // Normalize the input ID for better matching
+      const normalizeId = (id: string) => id.toLowerCase().replace(/[\s-]/g, '');
+      const normalizedInput = normalizeId(trimmedId);
+      
+      // Strategy 1: Case-insensitive search with broader matching
+      let { data: studentsData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
-        .eq('student_id', trimmedId)
         .eq('status', 'Active')
-        .maybeSingle();
+        .ilike('student_id', `%${trimmedId}%`);
 
-      // Strategy 2: Case-insensitive match
-      if (!studentData && !studentError) {
-        console.log("Exact match failed, trying case-insensitive lookup");
-        const { data: students } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, student_id, status')
-          .ilike('student_id', trimmedId)
-          .eq('status', 'Active');
-        
-        studentData = students?.[0] || null;
+      if (studentError) {
+        console.error("Student lookup error:", studentError);
+        toast({
+          title: "Database Error",
+          description: "Failed to search for student. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Strategy 3: Check if input is just numbers (legacy format)
-      if (!studentData && !studentError && /^\d+$/.test(trimmedId)) {
-        console.log("Trying legacy number-only format lookup");
-        const { data: students } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, student_id, status')
-          .eq('student_id', trimmedId)
-          .eq('status', 'Active');
-        
-        studentData = students?.[0] || null;
-      }
-
-      // Strategy 4: Try partial matching for hyphenated IDs
-      if (!studentData && !studentError && trimmedId.includes('-')) {
-        console.log("Trying partial hyphenated ID lookup");
-        const { data: students } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, student_id, status')
-          .ilike('student_id', `%${trimmedId}%`)
-          .eq('status', 'Active');
-        
-        // Find exact match within results
-        studentData = students?.find(student => 
+      // Find the best match from the results
+      let studentData = null;
+      
+      if (studentsData && studentsData.length > 0) {
+        // First try exact match (case-insensitive)
+        studentData = studentsData.find(student => 
           student.student_id.toLowerCase() === trimmedId.toLowerCase()
-        ) || students?.[0] || null;
-      }
-
-      // Strategy 5: Normalized lookup (remove spaces and hyphens)
-      if (!studentData && !studentError) {
-        console.log("Trying normalized lookup");
-        const normalizedInput = trimmedId.replace(/[\s-]/g, '').toLowerCase();
-        const { data: allStudents } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, student_id, status')
-          .eq('status', 'Active');
+        );
         
-        studentData = allStudents?.find(student => {
-          const normalizedStudentId = student.student_id.replace(/[\s-]/g, '').toLowerCase();
-          return normalizedStudentId === normalizedInput || 
-                 normalizedStudentId.includes(normalizedInput) ||
-                 normalizedInput.includes(normalizedStudentId);
-        }) || null;
+        // If no exact match, try normalized matching
+        if (!studentData) {
+          studentData = studentsData.find(student => {
+            const normalizedStudentId = normalizeId(student.student_id);
+            return normalizedStudentId === normalizedInput;
+          });
+        }
+        
+        // If still no match, try partial matching
+        if (!studentData) {
+          studentData = studentsData.find(student => {
+            const normalizedStudentId = normalizeId(student.student_id);
+            return normalizedStudentId.includes(normalizedInput) || 
+                   normalizedInput.includes(normalizedStudentId);
+          });
+        }
+        
+        // If still no match, take the first result as fallback
+        if (!studentData && studentsData.length === 1) {
+          studentData = studentsData[0];
+        }
       }
-
+      
       if (!studentData) {
         console.error("Student lookup failed for ID:", trimmedId);
         toast({
           title: "Student Not Found",
-          description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct and the student status is Active.`,
+          description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct.`,
           variant: "destructive",
         });
         return;
       }
 
       console.log("Found student:", studentData);
+
+      // Mark scratch card as used AFTER successful student lookup
+      const { data: markUsedResult, error: markUsedError } = await supabase.rpc('mark_scratch_card_used', {
+        card_pin: pin,
+        p_user_id: null // No user ID for public portal
+      });
+
+      if (markUsedError || !markUsedResult) {
+        console.error('Error marking scratch card as used:', markUsedError);
+        toast({
+          title: "Warning",
+          description: "Results loaded but scratch card status may not have been updated properly.",
+          variant: "destructive",
+        });
+        // Continue anyway - don't block result viewing
+      }
 
       // Fetch results with proper joins
       const { data: resultsData, error: resultsError } = await supabase
