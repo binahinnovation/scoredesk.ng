@@ -166,7 +166,6 @@ const StudentResultPortal = () => {
       if (!studentData) {
         console.error("Student lookup failed for ID:", trimmedId);
         console.error("Available students:", studentsData?.map(s => s.student_id));
-        studentData = studentsData.find(student => 
         toast({
           title: "Student Not Found",
           description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct and try again.`,
