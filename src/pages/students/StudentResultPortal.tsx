@@ -105,12 +105,12 @@ const StudentResultPortal = () => {
       const normalizeId = (id: string) => id.toLowerCase().replace(/[\s-]/g, '');
       const normalizedInput = normalizeId(trimmedId);
       
-      // Strategy 1: Flexible search with multiple ID formats
+      // Simplified flexible search
       let { data: studentsData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
         .eq('status', 'Active')
-        .or(`student_id.ilike.%${trimmedId}%,student_id.ilike.%${normalizedInput}%,student_id.ilike.%${trimmedId.replace(/[\s-]/g, '')}%`);
+        .ilike('student_id', `%${trimmedId}%`);
 
       if (studentError) {
         console.error("Student lookup error:", studentError);
@@ -126,12 +126,21 @@ const StudentResultPortal = () => {
       let studentData = null;
       
       if (studentsData && studentsData.length > 0) {
-        // First try exact match (case-insensitive)
+        console.log("Found students:", studentsData.map(s => ({ id: s.student_id, name: `${s.first_name} ${s.last_name}` })));
+        
+        // Strategy 1: Exact match (case-sensitive)
         studentData = studentsData.find(student => 
-          student.student_id.toLowerCase() === trimmedId.toLowerCase()
+          student.student_id === trimmedId
         );
         
-        // If no exact match, try normalized matching
+        // Strategy 2: Exact match (case-insensitive)
+        if (!studentData) {
+          studentData = studentsData.find(student => 
+            student.student_id.toLowerCase() === trimmedId.toLowerCase()
+          );
+        }
+        
+        // Strategy 3: Normalized matching (remove spaces and hyphens)
         if (!studentData) {
           studentData = studentsData.find(student => {
             const normalizedStudentId = normalizeId(student.student_id);
@@ -139,7 +148,7 @@ const StudentResultPortal = () => {
           });
         }
         
-        // If still no match, try partial matching
+        // Strategy 4: Partial matching (both directions)
         if (!studentData) {
           studentData = studentsData.find(student => {
             const normalizedStudentId = normalizeId(student.student_id);
@@ -148,7 +157,7 @@ const StudentResultPortal = () => {
           });
         }
         
-        // If still no match, take the first result as fallback
+        // Strategy 5: If only one result, use it
         if (!studentData && studentsData.length === 1) {
           studentData = studentsData[0];
         }
@@ -156,9 +165,11 @@ const StudentResultPortal = () => {
       
       if (!studentData) {
         console.error("Student lookup failed for ID:", trimmedId);
+        console.error("Available students:", studentsData?.map(s => s.student_id));
+        studentData = studentsData.find(student => 
         toast({
           title: "Student Not Found",
-          description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct.`,
+          description: `No active student found with ID "${trimmedId}". Please verify the Student ID is correct and try again.`,
           variant: "destructive",
         });
         return;
