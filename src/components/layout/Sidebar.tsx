@@ -22,7 +22,8 @@ import {
   Mail,
   Send,
   Inbox,
-  PenTool
+  PenTool,
+  Shield
 } from "lucide-react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
