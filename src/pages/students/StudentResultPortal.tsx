@@ -105,12 +105,12 @@ const StudentResultPortal = () => {
       const normalizeId = (id: string) => id.toLowerCase().replace(/[\s-]/g, '');
       const normalizedInput = normalizeId(trimmedId);
       
-      // Strategy 1: Case-insensitive search with broader matching
+      // Strategy 1: Flexible search with multiple ID formats
       let { data: studentsData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
         .eq('status', 'Active')
-        .ilike('student_id', `%${trimmedId}%`);
+        .or(`student_id.ilike.%${trimmedId}%,student_id.ilike.%${normalizedInput}%,student_id.ilike.%${trimmedId.replace(/[\s-]/g, '')}%`);
 
       if (studentError) {
         console.error("Student lookup error:", studentError);
