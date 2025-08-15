@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Settings, Save, AlertCircle } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -27,6 +28,7 @@ interface GradeBoundaries {
 
 export default function AssessmentSettings() {
   const { userRole, hasPermission, loading } = useUserRole();
+  const { user } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [gradeBoundaries, setGradeBoundaries] = useState<GradeBoundaries>({
     A: 80, B: 70, C: 60, D: 50, F: 0
@@ -35,10 +37,10 @@ export default function AssessmentSettings() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (hasPermission("Assessment Management")) {
+    if (hasPermission("Assessment Management") && user?.id) {
       fetchData();
     }
-  }, [hasPermission]);
+  }, [hasPermission, user?.id]);
 
   const fetchData = async () => {
     setLoadingData(true);
@@ -47,7 +49,7 @@ export default function AssessmentSettings() {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("school_id")
-        .eq("id", userRole?.user_id)
+        .eq("id", user?.id)
         .single();
 
       if (profileError) throw profileError;
