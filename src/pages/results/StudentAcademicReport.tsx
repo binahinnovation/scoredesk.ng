@@ -137,7 +137,17 @@ export default function StudentAcademicReport() {
         .single();
 
       // Mark scratch card as used
-      await supabase.rpc('mark_scratch_card_used', { card_pin: pin });
+      const { data: markUsedResult, error: markUsedError } = await supabase.rpc('mark_scratch_card_used', { 
+        card_pin: pin,
+        p_user_id: null,
+        p_student_id: student.student_id
+      });
+
+      if (markUsedError) {
+        console.error('Error marking scratch card as used:', markUsedError);
+      } else if (markUsedResult && !markUsedResult.success) {
+        console.error('Scratch card usage failed:', markUsedResult.message);
+      }
 
       // Mock academic results (in real implementation, fetch from database)
       const mockResults: StudentResult[] = [

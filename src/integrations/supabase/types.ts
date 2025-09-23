@@ -480,6 +480,8 @@ export type Database = {
           used_at: string | null
           used_by: string | null
           used_for_result_check: boolean | null
+          usage_count: number
+          max_usage_count: number
         }
         Insert: {
           amount?: number
@@ -496,6 +498,8 @@ export type Database = {
           used_at?: string | null
           used_by?: string | null
           used_for_result_check?: boolean | null
+          usage_count?: number
+          max_usage_count?: number
         }
         Update: {
           amount?: number
@@ -512,6 +516,8 @@ export type Database = {
           used_at?: string | null
           used_by?: string | null
           used_for_result_check?: boolean | null
+          usage_count?: number
+          max_usage_count?: number
         }
         Relationships: [
           {
@@ -835,8 +841,19 @@ export type Database = {
         Returns: boolean
       }
       mark_scratch_card_used: {
-        Args: { card_pin: string }
-        Returns: boolean
+        Args: { 
+          card_pin: string
+          p_user_id?: string | null
+          p_student_id?: string | null
+        }
+        Returns: {
+          success: boolean
+          message: string
+          usage_count: number
+          max_usage: number
+          remaining_uses?: number
+          is_expired?: boolean
+        }
       }
     }
     Enums: {

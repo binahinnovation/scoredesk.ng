@@ -72,11 +72,21 @@ export default function ComposeMessagePage() {
         .eq('id', user.id)
         .single();
 
+      // Check if user has a school_id
+      if (!profile?.school_id) {
+        toast({
+          title: "Error",
+          description: "Your profile is not associated with a school. Please contact your administrator.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // 1. Insert message into 'messages' table
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
-          school_id: profile?.school_id,
+          school_id: profile.school_id,
           sender_id: user.id,
           subject: subject.trim(),
           body: body.trim(),
@@ -86,7 +96,10 @@ export default function ComposeMessagePage() {
         .select()
         .single();
 
-      if (messageError) throw messageError;
+      if (messageError) {
+        console.error("Message insert error:", messageError);
+        throw new Error(`Failed to create message: ${messageError.message}`);
+      }
 
       const messageId = messageData.id;
 
@@ -98,7 +111,10 @@ export default function ComposeMessagePage() {
             message_id: messageId,
             recipient_id: recipientId,
           });
-        if (recipientError) throw recipientError;
+        if (recipientError) {
+          console.error("Recipient insert error:", recipientError);
+          throw new Error(`Failed to add recipient: ${recipientError.message}`);
+        }
       }
 
       // 3. Upload attachments to storage (if any)

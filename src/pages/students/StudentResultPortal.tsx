@@ -79,19 +79,31 @@ const StudentResultPortal = () => {
 
       const termId = terms[0].id;
 
-      // Verify and mark scratch card as used
+      // Verify scratch card is available for use
       const { data: scratchCardData, error: cardError } = await supabase
         .from('scratch_cards')
         .select('*')
         .eq('pin', pin)
         .eq('status', 'Active')
-        .or('used_for_result_check.is.null,used_for_result_check.eq.false')
         .maybeSingle();
 
       if (cardError || !scratchCardData) {
         toast({
           title: "Invalid PIN",
-          description: "The PIN you entered is invalid or has already been used for result checking.",
+          description: "The PIN you entered is invalid or not found.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if card can be used (handle NULL values properly)
+      const currentUsage = scratchCardData.usage_count || 0;
+      const maxUsage = scratchCardData.max_usage_count || 3;
+      
+      if (currentUsage >= maxUsage) {
+        toast({
+          title: "Card Expired",
+          description: "This scratch card has reached its maximum usage limit.",
           variant: "destructive",
         });
         return;
@@ -179,14 +191,23 @@ const StudentResultPortal = () => {
       // Mark scratch card as used AFTER successful student lookup
       const { data: markUsedResult, error: markUsedError } = await supabase.rpc('mark_scratch_card_used', {
         card_pin: pin,
-        p_user_id: null // No user ID for public portal
+        p_user_id: null, // No user ID for public portal
+        p_student_id: studentData.student_id // Pass the student ID for tracking
       });
 
-      if (markUsedError || !markUsedResult) {
+      if (markUsedError) {
         console.error('Error marking scratch card as used:', markUsedError);
         toast({
           title: "Warning",
           description: "Results loaded but scratch card status may not have been updated properly.",
+          variant: "destructive",
+        });
+        // Continue anyway - don't block result viewing
+      } else if (markUsedResult && !markUsedResult.success) {
+        console.error('Scratch card usage failed:', markUsedResult.message);
+        toast({
+          title: "Warning",
+          description: `Scratch card issue: ${markUsedResult.message}`,
           variant: "destructive",
         });
         // Continue anyway - don't block result viewing

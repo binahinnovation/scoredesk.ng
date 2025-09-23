@@ -27,6 +27,7 @@ import ClassRanking from "./pages/ranking/ClassRanking";
 import ReportCardDesigner from "./pages/reportcards/ReportCardDesigner";
 import SchoolBranding from "./pages/branding/SchoolBranding";
 import ScratchCards from "./pages/scratchcards/ScratchCards";
+import ScratchCardTester from "./components/ScratchCardTester";
 import AnalyticsDashboard from "./pages/analytics/AnalyticsDashboard";
 import SettingsPage from "./pages/settings/SettingsPage";
 import StudentResultPortal from "./pages/students/StudentResultPortal";
@@ -47,8 +48,8 @@ import AttendanceSummaryPage from "./pages/attendance/AttendanceSummaryPage";
 import InboxPage from "./pages/messages/InboxPage";
 import SentPage from "./pages/messages/SentPage";
 import DraftsPage from "./pages/messages/DraftsPage";
-import ComposeMessagePage from "./pages/messages/ComposeMessagePage";
 import MessageViewPage from "./pages/messages/MessageViewPage";
+import ComposeMessagePage from "./pages/messages/ComposeMessagePage";
 
 // Create a new client
 const queryClient = new QueryClient();
@@ -143,6 +144,11 @@ const AppRoutes = () => {
             <ScratchCards />
           </ProtectedRoute>
         } />
+        <Route path="scratchcards/test" element={
+          <ProtectedRoute requiredPermission="Scratch Card Generator">
+            <ScratchCardTester />
+          </ProtectedRoute>
+        } />
         <Route path="analytics" element={
           <ProtectedRoute requiredPermission="Analytics Dashboard">
             <AnalyticsDashboard />
@@ -179,6 +185,7 @@ const AppRoutes = () => {
         <Route path="messages/inbox" element={<InboxPage />} />
         <Route path="messages/sent" element={<SentPage />} />
         <Route path="messages/drafts" element={<DraftsPage />} />
+        <Route path="messages/view/:messageId" element={<MessageViewPage />} />
         <Route path="messages/compose" element={<ComposeMessagePage />} />
         <Route path="messages/:id" element={<MessageViewPage />} />
 
