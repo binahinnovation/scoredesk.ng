@@ -84,23 +84,9 @@ export function MainNav({ onMenuClick }: MainNavProps) {
              
              {/* ScoreDesk - School Name */}
              <div className="min-w-0 flex-shrink">
-               <span className="font-bold text-sm sm:text-lg md:text-xl lg:text-2xl text-emerald-700 truncate">
-                 ScoreDesk
+               <span className="font-bold text-sm sm:text-lg md:text-xl lg:text-2xl text-emerald-700 whitespace-nowrap">
+                 ScoreDesk{schoolInfo && ` - ${schoolInfo.name}`}
                </span>
-               {schoolInfo && (
-                 <div className="hidden sm:block">
-                   <span className="font-bold text-xs sm:text-sm md:text-base lg:text-lg text-emerald-700 ml-1 truncate">
-                     - {schoolInfo.name}
-                   </span>
-                 </div>
-               )}
-               {schoolInfo && (
-                 <div className="block sm:hidden">
-                   <span className="font-bold text-xs text-emerald-700 ml-1 truncate">
-                     - {schoolInfo.name.length > 12 ? schoolInfo.name.substring(0, 12) + '...' : schoolInfo.name}
-                   </span>
-                 </div>
-               )}
              </div>
              
              {/* School Logo - After the text */}
