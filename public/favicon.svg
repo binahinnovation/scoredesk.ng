@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background circle with emerald color -->
+  <circle cx="16" cy="16" r="16" fill="#059669"/>
+  
+  <!-- Graduation cap icon -->
+  <path d="M16 6l-6 2.5v3.5l6-2.5 6 2.5V8.5L16 6z" fill="white"/>
+  <path d="M10 12v4l6-2.5 6 2.5v-4l-6 2.5-6-2.5z" fill="white"/>
+  <path d="M10 16v2l6-2.5 6 2.5v-2l-6 2.5-6-2.5z" fill="white"/>
+  
+  <!-- ScoreDesk text -->
+  <text x="16" y="28" font-family="Arial, sans-serif" font-size="6" font-weight="bold" text-anchor="middle" fill="white">SD</text>
+</svg>

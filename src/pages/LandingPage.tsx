@@ -220,15 +220,16 @@ export default function LandingPage() {
               <div>
                 <h4 className="text-lg font-semibold mb-4">Contact</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-emerald-300 transition-colors">Support</a></li>
-                  <li><a href="#" className="hover:text-emerald-300 transition-colors">Sales</a></li>
+                  <li><a href="tel:09063412927" className="hover:text-emerald-300 transition-colors">Phone: 09063412927</a></li>
+                  <li><span className="hover:text-emerald-300 transition-colors">Address: Abuja, Nigeria</span></li>
+                  <li><a href="mailto:scoredesk.ng@gmail.com" className="hover:text-emerald-300 transition-colors">Email: scoredesk.ng@gmail.com</a></li>
                 </ul>
               </div>
             </div>
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400">&copy; 2025 ScoreDesk. All rights reserved.</p>
+            <p className="text-gray-400">&copy; 2025 ScoreDesk by Binah Innovation. All rights reserved.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
               <a href="#" className="text-gray-400 hover:text-emerald-300 transition-colors">Privacy Policy</a>
               <a href="#" className="text-gray-400 hover:text-emerald-300 transition-colors">Terms of Service</a>
