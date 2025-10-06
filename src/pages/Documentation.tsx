@@ -628,31 +628,32 @@ export default function Documentation() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-emerald-700 text-white p-2 rounded-lg">
-                <BookOpen className="h-6 w-6" />
+        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="bg-emerald-700 text-white p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">ScoreDesk Documentation</h1>
-                <p className="text-gray-600">Complete guide to managing your school</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">ScoreDesk Documentation</h1>
+                <p className="text-sm sm:text-base text-gray-600 hidden sm:block">Complete guide to managing your school</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search documentation..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10 w-full sm:w-64 h-10 sm:h-10"
                 />
               </div>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto h-10">
                 <a href="/dashboard">
                   <Play className="h-4 w-4 mr-2" />
-                  Try ScoreDesk
+                  <span className="hidden sm:inline">Try ScoreDesk</span>
+                  <span className="sm:hidden">Try Now</span>
                 </a>
               </Button>
             </div>
@@ -660,13 +661,13 @@ export default function Documentation() {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
+        <div className="grid lg:grid-cols-4 gap-4 sm:gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8">
-              <nav className="space-y-2">
-                <h3 className="font-semibold text-gray-900 mb-4">Table of Contents</h3>
+            <div className="sticky top-4 sm:top-8">
+              <nav className="space-y-1 sm:space-y-2">
+                <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base">Table of Contents</h3>
                 {filteredSections.map((section) => (
                   <div key={section.id}>
                     <button
@@ -674,17 +675,17 @@ export default function Documentation() {
                         setActiveSection(section.id);
                         toggleSection(section.id);
                       }}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
+                      className={`w-full flex items-center justify-between p-2 sm:p-3 rounded-lg text-left transition-colors ${
                         activeSection === section.id
                           ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
                           : 'hover:bg-gray-100 text-gray-700'
                       }`}
                     >
-                      <div className="flex items-center space-x-3">
-                        {section.icon}
-                        <div>
-                          <div className="font-medium">{section.title}</div>
-                          <div className="text-sm text-gray-500">{section.description}</div>
+                      <div className="flex items-center space-x-2 sm:space-x-3">
+                        <div className="flex-shrink-0">{section.icon}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm sm:text-base truncate">{section.title}</div>
+                          <div className="text-xs sm:text-sm text-gray-500 hidden sm:block">{section.description}</div>
                         </div>
                       </div>
                       {expandedSections.has(section.id) ? (
@@ -701,7 +702,7 @@ export default function Documentation() {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <div className="space-y-8">
+            <div className="space-y-4 sm:space-y-8">
               {filteredSections.map((section) => (
                 <div key={section.id} id={section.id} className="space-y-6">
                   {section.subsections.map((subsection) => (
