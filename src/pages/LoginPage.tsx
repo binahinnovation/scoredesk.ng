@@ -32,38 +32,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-4 font-roboto">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center animate-fade-in">
-          <Link to="/" className="inline-block mb-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-white to-emerald-50 p-3 sm:p-4 font-roboto">
+      <div className="w-full max-w-sm sm:max-w-md">
+        <div className="mb-6 sm:mb-8 text-center animate-fade-in">
+          <Link to="/" className="inline-block mb-4 sm:mb-6">
             <div className="flex items-center justify-center space-x-2">
-              <div className="bg-emerald-700 text-white p-2 rounded-lg">
-                <BookOpen className="h-6 w-6" />
+              <div className="bg-emerald-700 text-white p-2 sm:p-3 rounded-lg">
+                <BookOpen className="h-6 w-6 sm:h-8 sm:w-8" />
               </div>
-              <span className="font-bold text-3xl text-emerald-700">ScoreDesk</span>
+              <span className="font-bold text-2xl sm:text-3xl lg:text-4xl text-emerald-700">ScoreDesk</span>
             </div>
           </Link>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground">Sign in to your account</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Welcome back</h1>
+          <p className="text-sm sm:text-base text-gray-600 font-medium">Sign in to your account</p>
         </div>
         
         <Card className="shadow-xl animate-slide-in hover-scale">
           <form onSubmit={handleLogin}>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl text-center">Login</CardTitle>
-              <CardDescription className="text-center">
+            <CardHeader className="space-y-2 pb-4">
+              <CardTitle className="text-xl sm:text-2xl text-center font-bold text-gray-900">Login</CardTitle>
+              <CardDescription className="text-center text-sm sm:text-base text-gray-600 font-medium">
                 Enter your email and password to access your ScoreDesk account
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 sm:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm sm:text-base font-semibold text-gray-900">Email Address</Label>
                 <Input 
                   id="email" 
                   type="email" 
                   placeholder="name@school.com" 
                   required 
-                  className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  className="h-11 sm:h-12 text-base transition-all focus-within:ring-2 focus-within:ring-emerald-500 border-2"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
@@ -71,8 +71,8 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-sm text-emerald-700 hover:underline">
+                  <Label htmlFor="password" className="text-sm sm:text-base font-semibold text-gray-900">Password</Label>
+                  <Link to="/forgot-password" className="text-sm sm:text-base text-emerald-700 hover:underline font-medium">
                     Forgot password?
                   </Link>
                 </div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
                   id="password" 
                   type="password" 
                   required 
-                  className="transition-all focus-within:ring-1 focus-within:ring-emerald-500"
+                  className="h-11 sm:h-12 text-base transition-all focus-within:ring-2 focus-within:ring-emerald-500 border-2"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -92,26 +92,27 @@ export default function LoginPage() {
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                   disabled={isLoading}
+                  className="h-5 w-5"
                 />
                 <Label 
                   htmlFor="remember" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm sm:text-base font-medium text-gray-900 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   Remember me
                 </Label>
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col">
+            <CardFooter className="flex flex-col space-y-4">
               <Button 
                 type="submit" 
-                className="w-full bg-emerald-700 hover:bg-emerald-800 shadow-md"
+                className="w-full h-12 sm:h-14 bg-emerald-700 hover:bg-emerald-800 shadow-md text-base sm:text-lg font-semibold"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-              <p className="mt-4 text-center text-sm text-muted-foreground">
+              <p className="mt-2 text-center text-sm sm:text-base text-gray-600 font-medium">
                 Don't have an account?{" "}
-                <Link to="/signup" className="text-emerald-700 hover:text-emerald-800 hover:underline font-medium">
+                <Link to="/signup" className="text-emerald-700 hover:text-emerald-800 hover:underline font-semibold">
                   Sign up
                 </Link>
               </p>
@@ -119,8 +120,8 @@ export default function LoginPage() {
           </form>
         </Card>
         
-        <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Protected by industry standard encryption</p>
+        <div className="mt-6 sm:mt-8 text-center text-xs sm:text-sm text-gray-500 font-medium">
+          <p>🔒 Protected by industry standard encryption</p>
         </div>
       </div>
     </div>

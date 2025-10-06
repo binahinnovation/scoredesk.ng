@@ -11,6 +11,7 @@ import Documentation from "./pages/Documentation";
 import Blog from "./pages/Blog";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import ResponsiveTest from "./pages/ResponsiveTest";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
 import { useAuth } from "./hooks/use-auth";
@@ -215,6 +216,9 @@ const AppRoutes = () => {
             <AuditLogsPage />
           </ProtectedRoute>
         } />
+        
+        {/* Development/Testing Route */}
+        <Route path="responsive-test" element={<ResponsiveTest />} />
       </Route>
       
       <Route path="*" element={<NotFound />} />

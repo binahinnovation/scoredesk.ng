@@ -565,24 +565,24 @@ export default function QuestionPaperSubmission() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 sm:gap-6 p-3 sm:p-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Question Paper Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Question Paper Management</h1>
           {isAutoSaving && (
-            <p className="text-sm text-blue-600 flex items-center gap-1 mt-1">
+            <p className="text-sm sm:text-base text-blue-600 flex items-center gap-1 mt-1 font-medium">
               <Clock className="h-3 w-3 animate-spin" />
               Auto-saving...
             </p>
           )}
           {lastSaved && !isAutoSaving && (
-            <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+            <p className="text-sm sm:text-base text-green-600 flex items-center gap-1 mt-1 font-medium">
               <Save className="h-3 w-3" />
               Last saved: {lastSaved.toLocaleTimeString()}
             </p>
           )}
           {hasUnsavedChanges && !isAutoSaving && (
-            <p className="text-sm text-orange-600 flex items-center gap-1 mt-1">
+            <p className="text-sm sm:text-base text-orange-600 flex items-center gap-1 mt-1 font-medium">
               <AlertTriangle className="h-3 w-3" />
               Unsaved changes
             </p>
@@ -592,7 +592,7 @@ export default function QuestionPaperSubmission() {
           variant="outline"
           size="sm"
           onClick={fetchData}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 text-sm sm:text-base font-medium"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -600,22 +600,26 @@ export default function QuestionPaperSubmission() {
       </div>
       
       <Tabs defaultValue="create" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="create" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+          <TabsTrigger value="create" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
             <Plus className="h-4 w-4" />
-            Create Paper
+            <span className="hidden sm:inline">Create Paper</span>
+            <span className="sm:hidden">Create</span>
           </TabsTrigger>
-          <TabsTrigger value="edit" className="flex items-center gap-2">
+          <TabsTrigger value="edit" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
             <Edit3 className="h-4 w-4" />
-            Edit Questions
+            <span className="hidden sm:inline">Edit Questions</span>
+            <span className="sm:hidden">Edit</span>
           </TabsTrigger>
-          <TabsTrigger value="preview" className="flex items-center gap-2">
+          <TabsTrigger value="preview" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
             <Eye className="h-4 w-4" />
-            Preview & Print
+            <span className="hidden sm:inline">Preview & Print</span>
+            <span className="sm:hidden">Preview</span>
           </TabsTrigger>
-          <TabsTrigger value="my-papers" className="flex items-center gap-2">
+          <TabsTrigger value="my-papers" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
             <FileText className="h-4 w-4" />
-            My Papers
+            <span className="hidden sm:inline">My Papers</span>
+            <span className="sm:hidden">Papers</span>
           </TabsTrigger>
         </TabsList>
 
@@ -630,16 +634,16 @@ export default function QuestionPaperSubmission() {
           </CardHeader>
           <CardContent className="space-y-6">
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                  <Label htmlFor="subject">Subject *</Label>
+                  <Label htmlFor="subject" className="text-sm sm:text-base font-semibold text-gray-900">Subject *</Label>
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 sm:h-12 text-base">
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
                     {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>
+                      <SelectItem key={subject.id} value={subject.id} className="text-base">
                         {subject.name} ({subject.code})
                       </SelectItem>
                     ))}
@@ -648,14 +652,14 @@ export default function QuestionPaperSubmission() {
               </div>
 
               <div>
-                  <Label htmlFor="class">Class *</Label>
+                  <Label htmlFor="class" className="text-sm sm:text-base font-semibold text-gray-900">Class *</Label>
                 <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 sm:h-12 text-base">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
                     {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id}>
+                      <SelectItem key={cls.id} value={cls.id} className="text-base">
                         {cls.name}
                       </SelectItem>
                     ))}
@@ -664,14 +668,14 @@ export default function QuestionPaperSubmission() {
             </div>
 
               <div>
-                  <Label htmlFor="term">Term *</Label>
+                  <Label htmlFor="term" className="text-sm sm:text-base font-semibold text-gray-900">Term *</Label>
                 <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11 sm:h-12 text-base">
                     <SelectValue placeholder="Select term" />
                   </SelectTrigger>
                   <SelectContent>
                     {terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id}>
+                      <SelectItem key={term.id} value={term.id} className="text-base">
                         {term.name} ({term.academic_year})
                       </SelectItem>
                     ))}
@@ -680,12 +684,13 @@ export default function QuestionPaperSubmission() {
               </div>
 
               <div>
-                  <Label htmlFor="title">Paper Title *</Label>
+                  <Label htmlFor="title" className="text-sm sm:text-base font-semibold text-gray-900">Paper Title *</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g., Mid-term Exam"
+                  className="h-11 sm:h-12 text-base"
                 />
               </div>
             </div>
@@ -694,16 +699,18 @@ export default function QuestionPaperSubmission() {
 
               {/* Submission Mode */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Submission Method</Label>
+                <Label className="text-base sm:text-lg font-semibold text-gray-900">Submission Method</Label>
             <Tabs value={submissionMode} onValueChange={(value) => setSubmissionMode(value as 'scan' | 'manual')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="manual" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-2 h-auto">
+                <TabsTrigger value="manual" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
                   <FileText className="h-4 w-4" />
-                  Manual Entry
+                  <span className="hidden sm:inline">Manual Entry</span>
+                  <span className="sm:hidden">Manual</span>
                 </TabsTrigger>
-                <TabsTrigger value="scan" className="flex items-center gap-2">
+                <TabsTrigger value="scan" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2 sm:py-1 text-xs sm:text-sm">
                   <Scan className="h-4 w-4" />
-                  Scan/Upload
+                  <span className="hidden sm:inline">Scan/Upload</span>
+                  <span className="sm:hidden">Upload</span>
                 </TabsTrigger>
               </TabsList>
 

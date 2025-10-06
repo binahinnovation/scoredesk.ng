@@ -37,8 +37,13 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
   return (
     <div 
       className={cn(
-        "fixed left-0 top-16 h-[calc(100vh-4rem)] bg-emerald-700 text-white transition-all duration-300 ease-in-out z-30",
-        open ? "w-64" : "w-16",
+        "fixed left-0 top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] bg-emerald-700 text-white transition-all duration-300 ease-in-out z-30",
+        // Responsive widths: smaller on mobile, standard on desktop
+        open ? "w-48 sm:w-56 md:w-60 lg:w-64" : "w-12 sm:w-14 md:w-16",
+        // Mobile behavior: overlay on small screens
+        "lg:relative lg:translate-x-0",
+        // Mobile overlay behavior
+        open ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         className
       )}
     >
@@ -48,9 +53,9 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
           variant="ghost" 
           size="icon"
           onClick={() => setOpen && setOpen(!open)}
-          className="absolute -right-4 top-4 bg-emerald-700 rounded-full text-white hover:bg-emerald-600 shadow-md h-8 w-8"
+          className="absolute -right-3 top-4 bg-emerald-700 rounded-full text-white hover:bg-emerald-600 shadow-md h-7 w-7 sm:h-8 sm:w-8 z-40"
         >
-          {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {open ? <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" /> : <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />}
         </Button>
         
         <ScrollArea className="flex-grow">

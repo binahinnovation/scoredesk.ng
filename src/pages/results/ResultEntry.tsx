@@ -137,9 +137,9 @@ export default function ResultEntry() {
           // Fallback to user metadata if no assignments found
           const userSubjects = user?.user_metadata?.subjects;
           if (userSubjects && Array.isArray(userSubjects)) {
-            filteredSubjects = subjectsData?.filter(subject => 
+        filteredSubjects = subjectsData?.filter(subject => 
               userSubjects.includes(subject.name)
-            ) || [];
+        ) || [];
           }
         }
       }
@@ -670,8 +670,8 @@ export default function ResultEntry() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold text-gray-900">Result Entry</h1>
+    <div className="flex flex-col gap-4 sm:gap-6 p-3 sm:p-0">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Result Entry</h1>
       
       {dataLoading && (
         <Card className="border-blue-200 bg-blue-50">
@@ -743,22 +743,22 @@ export default function ResultEntry() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Selection Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <Label htmlFor="term">Term</Label>
+              <Label htmlFor="term" className="text-sm sm:text-base font-semibold text-gray-900">Term</Label>
               <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 text-base">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>
                   {terms.length > 0 ? (
                     terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id}>
-                        {term.name} ({term.academic_year})
+                    <SelectItem key={term.id} value={term.id} className="text-base">
+                      {term.name} ({term.academic_year})
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="no-terms" disabled>
+                    <SelectItem value="no-terms" disabled className="text-base">
                       No terms available
                     </SelectItem>
                   )}
@@ -780,14 +780,14 @@ export default function ResultEntry() {
             </div>
 
             <div>
-              <Label htmlFor="class">Class</Label>
+              <Label htmlFor="class" className="text-sm sm:text-base font-semibold text-gray-900">Class</Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 text-base">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableClasses.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
+                    <SelectItem key={cls.id} value={cls.id} className="text-base">
                       {cls.name}
                     </SelectItem>
                   ))}
@@ -796,14 +796,14 @@ export default function ResultEntry() {
             </div>
 
             <div>
-              <Label htmlFor="subject">Subject</Label>
+              <Label htmlFor="subject" className="text-sm sm:text-base font-semibold text-gray-900">Subject</Label>
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 text-base">
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
                   {subjects.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id}>
+                    <SelectItem key={subject.id} value={subject.id} className="text-base">
                       {subject.name} ({subject.code})
                     </SelectItem>
                   ))}
@@ -812,16 +812,16 @@ export default function ResultEntry() {
             </div>
 
             <div>
-              <Label htmlFor="assessment">Assessment</Label>
+              <Label htmlFor="assessment" className="text-sm sm:text-base font-semibold text-gray-900">Assessment</Label>
               <Select value={selectedAssessment} onValueChange={setSelectedAssessment}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 sm:h-12 text-base">
                   <SelectValue placeholder="Select assessment" />
                 </SelectTrigger>
                 <SelectContent>
                   {assessments.length > 0 ? (
                     assessments.map((assessment) => (
-                      <SelectItem key={assessment.id} value={assessment.id}>
-                        {assessment.name} (Max: {assessment.max_score})
+                    <SelectItem key={assessment.id} value={assessment.id} className="text-base">
+                      {assessment.name} (Max: {assessment.max_score})
                       </SelectItem>
                     ))
                   ) : (
@@ -855,7 +855,7 @@ export default function ResultEntry() {
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
+                className="max-w-sm h-11 sm:h-12 text-base"
               />
             </div>
           )}
@@ -864,47 +864,49 @@ export default function ResultEntry() {
           {selectedClass && selectedSubject && selectedAssessment && selectedTerm && (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="editReason">Reason for changes (Optional)</Label>
+                <Label htmlFor="editReason" className="text-sm sm:text-base font-semibold text-gray-900">Reason for changes (Optional)</Label>
                 <Textarea
                   id="editReason"
                   value={editReason}
                   onChange={(e) => setEditReason(e.target.value)}
                   placeholder="e.g., Corrected scores, added comments, updated assessments"
                   rows={2}
+                  className="text-base"
                 />
               </div>
 
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <p className="text-sm text-muted-foreground">
                   Enter scores for {subjects.find(s => s.id === selectedSubject)?.name} - {assessments.find(a => a.id === selectedAssessment)?.name}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
                     onClick={generateAllComments} 
                     disabled={saving || suggestingComments.size > 0}
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-medium"
                   >
                     <Sparkles className="h-4 w-4" />
-                    {suggestingComments.size > 0 ? "Generating..." : "Generate All Comments"}
+                    <span className="hidden sm:inline">{suggestingComments.size > 0 ? "Generating..." : "Generate All Comments"}</span>
+                    <span className="sm:hidden">{suggestingComments.size > 0 ? "Generating..." : "Generate All"}</span>
                   </Button>
-                  <Button onClick={saveResults} disabled={saving} className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
-                    {saving ? "Saving..." : "Save Results"}
-                  </Button>
+                <Button onClick={saveResults} disabled={saving} className="flex items-center gap-2 w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base font-medium">
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving..." : "Save Results"}
+                </Button>
                 </div>
               </div>
 
-              <div className="border rounded-lg">
+              <div className="border rounded-lg overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Student ID</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Score (Max: {assessments.find(a => a.id === selectedAssessment)?.max_score})</TableHead>
-                      <TableHead>Teacher Comment</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="min-w-[80px]">Student ID</TableHead>
+                      <TableHead className="min-w-[120px]">Student Name</TableHead>
+                      <TableHead className="hidden sm:table-cell">Class</TableHead>
+                      <TableHead className="min-w-[100px]">Score (Max: {assessments.find(a => a.id === selectedAssessment)?.max_score})</TableHead>
+                      <TableHead className="min-w-[200px]">Teacher Comment</TableHead>
+                      <TableHead className="min-w-[80px]">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -912,9 +914,9 @@ export default function ResultEntry() {
                       const existingResult = results.find(r => r.student_id === student.id);
                       return (
                         <TableRow key={student.id}>
-                          <TableCell>{student.student_id}</TableCell>
-                          <TableCell>{student.first_name} {student.last_name}</TableCell>
-                          <TableCell>{student.classes?.name}</TableCell>
+                          <TableCell className="font-mono text-sm">{student.student_id}</TableCell>
+                          <TableCell className="font-medium">{student.first_name} {student.last_name}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{student.classes?.name}</TableCell>
                           <TableCell>
                             <Input
                               type="number"
@@ -922,21 +924,21 @@ export default function ResultEntry() {
                               max={assessments.find(a => a.id === selectedAssessment)?.max_score}
                               value={existingResult?.score || ""}
                               onChange={(e) => updateScore(student.id, e.target.value)}
-                              className="w-24"
+                              className="w-16 sm:w-20 md:w-24"
                               placeholder="0"
                             />
                           </TableCell>
                           <TableCell>
                             <div className="space-y-2">
-                              <div className="flex gap-2">
-                                <Textarea
-                                  placeholder="Performance comment..."
-                                  value={existingResult?.teacher_comment || ""}
-                                  onChange={(e) => updateComment(student.id, e.target.value)}
-                                  className="min-h-[60px] text-sm resize-none flex-1"
-                                  maxLength={200}
-                                  rows={2}
-                                />
+                              <div className="flex gap-1 sm:gap-2">
+                              <Textarea
+                                placeholder="Performance comment..."
+                                value={existingResult?.teacher_comment || ""}
+                                onChange={(e) => updateComment(student.id, e.target.value)}
+                                  className="min-h-[60px] text-sm resize-none flex-1 min-w-0"
+                                maxLength={200}
+                                rows={2}
+                              />
                                 <div className="flex flex-col gap-1">
                                   <Button
                                     type="button"
@@ -944,7 +946,7 @@ export default function ResultEntry() {
                                     size="sm"
                                     onClick={() => suggestComment(student.id)}
                                     disabled={suggestingComments.has(student.id) || !existingResult?.score}
-                                    className="h-8 w-8 p-0"
+                                    className="h-8 w-8 p-0 flex-shrink-0"
                                     title="Generate AI comment suggestion"
                                   >
                                     {suggestingComments.has(student.id) ? (
@@ -957,7 +959,7 @@ export default function ResultEntry() {
                               </div>
                               <div className="flex justify-between items-center text-xs text-muted-foreground">
                                 <span>
-                                  {(existingResult?.teacher_comment || "").length}/200
+                                {(existingResult?.teacher_comment || "").length}/200
                                   {existingResult?.teacher_comment && (
                                     <span className="ml-2 text-blue-600">✨ AI Suggested</span>
                                   )}

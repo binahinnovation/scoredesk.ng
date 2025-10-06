@@ -37,23 +37,23 @@ interface StatsCardProps {
 const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color, change, description }) => {
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 border-l-4" style={{ borderLeftColor: color }}>
-      <CardContent className="p-6">
+      <CardContent className="p-3 sm:p-4 md:p-6">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{title}</p>
+            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
             {change && (
               <p className="text-xs text-green-600 mt-1 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                {change}
+                <TrendingUp className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span className="truncate">{change}</span>
               </p>
             )}
             {description && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{description}</p>
             )}
           </div>
-          <div className="p-3 rounded-full" style={{ backgroundColor: `${color}20` }}>
-            <div style={{ color: color }}>
+          <div className="p-2 sm:p-3 rounded-full flex-shrink-0 ml-2" style={{ backgroundColor: `${color}20` }}>
+            <div style={{ color: color }} className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7">
               {icon}
             </div>
           </div>
@@ -112,19 +112,19 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="mb-4 sm:mb-6 md:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Dashboard Overview
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Welcome to your comprehensive school management dashboard
           </p>
         </div>
 
         {/* Key Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <StatsCard
             title="Total Students"
             value={studentsCount}
@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Results Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <StatsCard
             title="Approved Results"
             value={resultsCount}
@@ -174,27 +174,28 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           {/* Class Distribution */}
           <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <BarChart3 className="h-5 w-5 text-emerald-600" />
-                Student Distribution by Class
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white text-sm sm:text-base">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 flex-shrink-0" />
+                <span className="truncate">Student Distribution by Class</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {classDistribution.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={classDistribution}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="name" 
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
                       axisLine={{ stroke: '#9ca3af' }}
+                      interval="preserveStartEnd"
                     />
                     <YAxis 
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
                       axisLine={{ stroke: '#9ca3af' }}
                     />
                     <Tooltip 
@@ -218,21 +219,22 @@ const Dashboard: React.FC = () => {
 
           {/* Subject Performance */}
           <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-white">Top Performing Subjects</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-gray-900 dark:text-white text-sm sm:text-base">Top Performing Subjects</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {subjectPerformance.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={subjectPerformance.slice(0, 6)}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="subject" 
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
                       axisLine={{ stroke: '#9ca3af' }}
+                      interval="preserveStartEnd"
                     />
                     <YAxis 
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
                       axisLine={{ stroke: '#9ca3af' }}
                     />
                     <Tooltip 
