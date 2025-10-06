@@ -221,7 +221,7 @@ export default function LandingPage() {
                 <h4 className="text-lg font-semibold mb-4">Contact</h4>
                 <ul className="space-y-2 text-gray-400">
                   <li><a href="tel:09063412927" className="hover:text-emerald-300 transition-colors">Phone: 09063412927</a></li>
-                  <li><span className="hover:text-emerald-300 transition-colors">Address: Abuja, Nigeria</span></li>
+                  <li><span className="hover:text-emerald-300 transition-colors">Address: Plot 315 Orji Uzoh Kalu Close, Ahmadu Bello Way, Mabushi Abuja</span></li>
                   <li><a href="mailto:scoredesk.ng@gmail.com" className="hover:text-emerald-300 transition-colors">Email: scoredesk.ng@gmail.com</a></li>
                 </ul>
               </div>

@@ -310,7 +310,7 @@ export default function TermsOfService() {
                     <p><strong>Binah Innovation</strong></p>
                     <p>📧 Email: <a href="mailto:legal@scoredesk.ng" className="hover:underline">legal@scoredesk.ng</a></p>
                     <p>📞 Phone: <a href="tel:09063412927" className="hover:underline">09063412927</a></p>
-                    <p>📍 Address: Abuja, Nigeria</p>
+                    <p>📍 Address: Plot 315 Orji Uzoh Kalu Close, Ahmadu Bello Way, Mabushi Abuja</p>
                     <p>🕒 Business Hours: Monday - Friday, 8:00 AM - 6:00 PM (WAT)</p>
                   </div>
                 </div>

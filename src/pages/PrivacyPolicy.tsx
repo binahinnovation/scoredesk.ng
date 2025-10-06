@@ -242,7 +242,7 @@ export default function PrivacyPolicy() {
                     <p><strong>ScoreDesk Privacy Team</strong></p>
                     <p>📧 Email: <a href="mailto:privacy@scoredesk.ng" className="hover:underline">privacy@scoredesk.ng</a></p>
                     <p>📞 Phone: <a href="tel:09063412927" className="hover:underline">09063412927</a></p>
-                    <p>📍 Address: Abuja, Nigeria</p>
+                    <p>📍 Address: Plot 315 Orji Uzoh Kalu Close, Ahmadu Bello Way, Mabushi Abuja</p>
                     <p>🕒 Business Hours: Monday - Friday, 8:00 AM - 6:00 PM (WAT)</p>
                   </div>
                 </div>
