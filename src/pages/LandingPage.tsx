@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { BarChart3, BookOpen, GraduationCap, LineChart, Settings, Shield, Trophy, Users } from "lucide-react";
 
 export default function LandingPage() {
@@ -211,9 +211,9 @@ export default function LandingPage() {
               <div>
                 <h4 className="text-lg font-semibold mb-4">Resources</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="#" className="hover:text-emerald-300 transition-colors">Documentation</a></li>
-                  <li><a href="#" className="hover:text-emerald-300 transition-colors">Tutorials</a></li>
-                  <li><a href="#" className="hover:text-emerald-300 transition-colors">Blog</a></li>
+                  <li><Link to="/documentation" className="hover:text-emerald-300 transition-colors">Documentation</Link></li>
+                  <li><Link to="/documentation" className="hover:text-emerald-300 transition-colors">Tutorials</Link></li>
+                  <li><Link to="/blog" className="hover:text-emerald-300 transition-colors">Blog</Link></li>
                 </ul>
               </div>
               
@@ -231,8 +231,8 @@ export default function LandingPage() {
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400">&copy; 2025 ScoreDesk by Binah Innovation. All rights reserved.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-emerald-300 transition-colors">Privacy Policy</a>
-              <a href="#" className="text-gray-400 hover:text-emerald-300 transition-colors">Terms of Service</a>
+              <Link to="/privacy-policy" className="text-gray-400 hover:text-emerald-300 transition-colors">Privacy Policy</Link>
+              <Link to="/terms-of-service" className="text-gray-400 hover:text-emerald-300 transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
