@@ -1,6 +1,6 @@
 
 export async function exportUsersToExcel(users: any[], role: string) {
-  // @ts-ignore: Vite/TS sometimes can't find module types, but runtime import is fine.
+  // @ts-expect-error: Vite/TS sometimes can't find module types, but runtime import is fine.
   const XLSX = (await import("xlsx")) as any;
   const data = users.map(user => ({
     "Name": user.full_name || user.user_id || "N/A",
@@ -15,9 +15,9 @@ export async function exportUsersToExcel(users: any[], role: string) {
 }
 
 export async function exportUsersToPDF(users: any[], role: string) {
-  // @ts-ignore: For autotable, as ESM interop is inconsistent
+  // @ts-expect-error: For autotable, as ESM interop is inconsistent
   const jsPDFModule = await import("jspdf");
-  // @ts-ignore: For autotable, as ESM interop is inconsistent
+  // @ts-expect-error: For autotable, as ESM interop is inconsistent
   const autoTableModule = await import("jspdf-autotable");
 
   const jsPDF = jsPDFModule.default;

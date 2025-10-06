@@ -6,12 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, FileText, BarChart3, TrendingUp, Users } from 'lucide-react';
+import { Calendar, Download, FileText, BarChart3, TrendingUp, Users, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
+import { useSchoolId } from '@/hooks/use-school-id';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AlertCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface AttendanceSummary {
   student_id: string;
@@ -43,6 +46,8 @@ const COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
 export default function AttendanceSummaryPage() {
   const { user } = useAuth();
+  const { hasPermission } = useUserRole();
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -61,37 +66,41 @@ export default function AttendanceSummaryPage() {
     setEndDate(lastDay.toISOString().split('T')[0]);
   }, []);
 
-  // Fetch classes
+
+  // Fetch classes - FILTERED BY SCHOOL
   const { data: classes = [] } = useQuery({
-    queryKey: ['classes'],
+    queryKey: ['classes', schoolId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('classes')
         .select('id, name')
+        .eq('school_id', schoolId)
         .order('name');
       
       if (error) throw error;
       return data as Class[];
-    }
+    },
+    enabled: !!schoolId
   });
 
-  // Fetch students for selected class
+  // Fetch students for selected class - FILTERED BY SCHOOL
   const { data: students = [] } = useQuery({
-    queryKey: ['students', selectedClass],
+    queryKey: ['students', selectedClass, schoolId],
     queryFn: async () => {
-      if (selectedClass === 'all') return [];
+      if (selectedClass === 'all' || !schoolId) return [];
       
       const { data, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id')
         .eq('class_id', selectedClass)
+        .eq('school_id', schoolId)
         .eq('status', 'Active')
         .order('first_name');
       
       if (error) throw error;
       return data;
     },
-    enabled: selectedClass !== 'all'
+    enabled: selectedClass !== 'all' && !!schoolId
   });
 
   const fetchAttendanceSummary = async () => {
@@ -121,6 +130,7 @@ export default function AttendanceSummaryPage() {
             classes:class_id (name)
           )
         `)
+        .eq('school_id', schoolId)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -349,6 +359,62 @@ export default function AttendanceSummaryPage() {
     return 'destructive';
   };
 
+  // Permission check
+  if (!hasPermission("Attendance Management")) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Attendance Summary</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10 gap-4">
+            <AlertCircle className="h-16 w-16 text-orange-500" />
+            <h2 className="text-xl font-semibold">Access Restricted</h2>
+            <p className="text-center text-muted-foreground">
+              Only Form Teachers, Principals, and Exam Officers can access attendance management.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (schoolIdLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Attendance Summary</h1>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="text-blue-800 font-medium">Loading School Information</p>
+                <p className="text-blue-700 text-sm">
+                  Please wait while we load your school details...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Attendance Summary</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10 gap-4">
+            <AlertCircle className="h-16 w-16 text-red-500" />
+            <h2 className="text-xl font-semibold">School Not Assigned</h2>
+            <p className="text-center text-muted-foreground">
+              Your account is not assigned to a school. Please contact your administrator.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -528,9 +594,13 @@ export default function AttendanceSummaryPage() {
                     ]}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
+                    labelLine={true}
+                    label={({ name, percent }) => {
+                      // Only show labels for segments with > 5% to avoid overlap
+                      if (percent < 0.05) return '';
+                      return `${name}: ${(percent * 100).toFixed(0)}%`;
+                    }}
+                    outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -538,7 +608,17 @@ export default function AttendanceSummaryPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    formatter={(value, name) => [`${value} days`, name]}
+                    labelFormatter={(label) => `Total: ${label}`}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value) => (
+                      <span style={{ color: '#333', fontSize: '14px' }}>{value}</span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>

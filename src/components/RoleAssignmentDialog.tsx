@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserRole } from '@/types/user';
@@ -87,12 +88,13 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
         if (error) throw error;
         newRoleRecord = data;
       } else {
-        // Insert new role
+        // Insert new role - INCLUDE SCHOOL_ID
         const { data, error } = await supabase
           .from('user_roles')
           .insert({
             user_id: user.user_id,
-            role: selectedRole as UserRole
+            role: selectedRole as UserRole,
+            school_id: userSchoolId
           })
           .select()
           .single();

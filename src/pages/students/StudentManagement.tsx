@@ -17,6 +17,7 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { generateStudentId, validateStudentId } from '@/utils/studentIdGenerator';
 import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
 import { useAuth } from '@/hooks/use-auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 interface Student {
   id: string;
@@ -48,12 +49,12 @@ const ITEMS_PER_PAGE = 10;
 
 export default function StudentManagement() {
   const { user } = useAuth();
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -76,21 +77,15 @@ export default function StudentManagement() {
   const { hasPermission } = useUserRole();
   const queryClient = useQueryClient();
 
-  // Fetch user's school ID for audit logging
-  useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (user) {
-        const schoolId = await getCurrentUserSchoolId();
-        setUserSchoolId(schoolId);
-      }
-    };
-    fetchSchoolId();
-  }, [user]);
-
-  // Fetch students with class information
+  // Fetch students with class information - FILTERED BY SCHOOL
   const { data: students = [], isLoading } = useQuery({
-    queryKey: ['students'],
+    queryKey: ['students', schoolId],
     queryFn: async () => {
+      if (!schoolId) {
+        console.warn('No school_id available, cannot fetch students');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('students')
         .select(`
@@ -99,40 +94,56 @@ export default function StudentManagement() {
             name
           )
         `)
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Student[];
-    }
+    },
+    enabled: !!schoolId && !schoolIdLoading,
   });
 
-  // Fetch classes for the select dropdown
+  // Fetch classes for the select dropdown - FILTERED BY SCHOOL
   const { data: classes = [] } = useQuery({
-    queryKey: ['classes'],
+    queryKey: ['classes', schoolId],
     queryFn: async () => {
+      if (!schoolId) {
+        console.warn('No school_id available, cannot fetch classes');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('classes')
         .select('*')
+        .eq('school_id', schoolId)
         .order('name');
 
       if (error) throw error;
       return data as Class[];
-    }
+    },
+    enabled: !!schoolId && !schoolIdLoading,
   });
 
   // Create student mutation
   const createStudentMutation = useMutation({
     mutationFn: async (studentData: typeof formData) => {
+      if (!schoolId) {
+        throw new Error('School ID is required to create a student');
+      }
+
       // Auto-generate student ID if not provided
-      let finalStudentData = { ...studentData };
+      const finalStudentData = { ...studentData };
       
       // Remove reason from student data as it's not a database field
       const { reason, ...dbStudentData } = finalStudentData;
       
+      // Add school_id to student data
+      (dbStudentData as any).school_id = schoolId;
+      
       if (!studentData.student_id.trim()) {
         try {
           dbStudentData.student_id = await generateStudentId({
-            schoolId: studentData.class_id ? undefined : undefined // Will use current user's school
+            schoolId: schoolId // Use current user's school
           });
         } catch (error) {
           throw new Error('Failed to generate student ID: ' + (error as Error).message);
@@ -155,7 +166,7 @@ export default function StudentManagement() {
       return { newRecord: data, reason: studentData.reason };
     },
     onSuccess: ({ newRecord, reason }) => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['students', schoolId] });
       toast({ 
         title: "Student created successfully",
         description: `Student ID: ${newRecord.student_id}`
@@ -164,9 +175,9 @@ export default function StudentManagement() {
       resetForm();
 
       // Log the insert operation
-      if (user && userSchoolId) {
+      if (user && schoolId) {
         logEdit({
-          schoolId: userSchoolId,
+          schoolId: schoolId,
           actorId: user.id,
           actionType: 'insert',
           tableName: 'students',
@@ -211,15 +222,15 @@ export default function StudentManagement() {
       return { newRecord: data, oldRecord, reason };
     },
     onSuccess: ({ newRecord, oldRecord, reason }) => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['students', schoolId] });
       toast({ title: "Student updated successfully" });
       setIsDialogOpen(false);
       resetForm();
 
       // Log the update operation
-      if (user && userSchoolId) {
+      if (user && schoolId) {
         logEdit({
-          schoolId: userSchoolId,
+          schoolId: schoolId,
           actorId: user.id,
           actionType: 'update',
           tableName: 'students',
@@ -259,13 +270,13 @@ export default function StudentManagement() {
       return { deletedRecordId: id, oldRecord };
     },
     onSuccess: ({ deletedRecordId, oldRecord }) => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['students', schoolId] });
       toast({ title: "Student deleted successfully" });
 
       // Log the delete operation
-      if (user && userSchoolId) {
+      if (user && schoolId) {
         logEdit({
-          schoolId: userSchoolId,
+          schoolId: schoolId,
           actorId: user.id,
           actionType: 'delete',
           tableName: 'students',

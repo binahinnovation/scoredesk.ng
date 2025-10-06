@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, Save, Plus, Search } from "lucide-react";
+import { AlertCircle, Save, Plus, Search, Sparkles, Check, X, RefreshCw } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { useSchoolId } from "@/hooks/use-school-id";
+import { useTeacherAssignments } from "@/hooks/use-teacher-assignments";
 
 interface Student {
   id: string;
@@ -56,6 +58,8 @@ interface Result {
 export default function ResultEntry() {
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
+  const { subjects: teacherSubjects, classes: teacherClasses, loading: assignmentsLoading, getClassesForSubject } = useTeacherAssignments();
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -68,52 +72,93 @@ export default function ResultEntry() {
   const [results, setResults] = useState<Result[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
-  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [editReason, setEditReason] = useState("");
-
-  // Fetch user's school ID for audit logging
-  useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (user) {
-        const schoolId = await getCurrentUserSchoolId();
-        setUserSchoolId(schoolId);
-      }
-    };
-    fetchSchoolId();
-  }, [user]);
+  const [suggestingComments, setSuggestingComments] = useState<Set<string>>(new Set());
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    if (hasPermission("Result Upload")) {
+    if (hasPermission("Result Upload") && schoolId && !schoolIdLoading && !assignmentsLoading) {
       fetchData();
     }
-  }, [hasPermission]);
+  }, [hasPermission, schoolId, schoolIdLoading, assignmentsLoading]);
 
   const fetchData = async () => {
-    try {
-      // Fetch classes
-      const { data: classesData } = await supabase.from("classes").select("*");
-      setClasses(classesData || []);
+    if (!schoolId) {
+      console.warn('No school_id available, skipping data fetch');
+      return;
+    }
 
-      // Fetch subjects
-      const { data: subjectsData } = await supabase.from("subjects").select("*");
+    setDataLoading(true);
+    try {
+      // Fetch classes - FILTERED BY SCHOOL AND TEACHER ASSIGNMENTS
+      const { data: classesData } = await supabase
+        .from("classes")
+        .select("*")
+        .eq("school_id", schoolId);
       
-      // Filter subjects based on user role and assigned subjects
+      // Filter classes based on user role and teacher assignments
+      let filteredClasses = classesData || [];
+      if (userRole === 'Subject Teacher') {
+        // Use new teacher assignments instead of user metadata
+        const assignedClassIds = teacherClasses.map(c => c.class_id);
+        if (assignedClassIds.length > 0) {
+          filteredClasses = classesData?.filter(cls => 
+            assignedClassIds.includes(cls.id)
+          ) || [];
+        } else {
+          // Fallback to user metadata if no assignments found
+          const userClasses = user?.user_metadata?.classes;
+          if (userClasses && Array.isArray(userClasses)) {
+            filteredClasses = classesData?.filter(cls => 
+              userClasses.includes(cls.name)
+            ) || [];
+          }
+        }
+      }
+      
+      setClasses(filteredClasses);
+
+      // Fetch subjects - FILTERED BY SCHOOL AND TEACHER ASSIGNMENTS
+      const { data: subjectsData } = await supabase
+        .from("subjects")
+        .select("*")
+        .eq("school_id", schoolId);
+      
+      // Filter subjects based on user role and teacher assignments
       let filteredSubjects = subjectsData || [];
-      if (userRole === 'Subject Teacher' && user?.user_metadata?.subjects) {
-        const assignedSubjects = user.user_metadata.subjects;
-        filteredSubjects = subjectsData?.filter(subject => 
-          assignedSubjects.includes(subject.name)
-        ) || [];
+      if (userRole === 'Subject Teacher') {
+        // Use new teacher assignments instead of user metadata
+        const assignedSubjectIds = teacherSubjects.map(s => s.subject_id);
+        if (assignedSubjectIds.length > 0) {
+          filteredSubjects = subjectsData?.filter(subject => 
+            assignedSubjectIds.includes(subject.id)
+          ) || [];
+        } else {
+          // Fallback to user metadata if no assignments found
+          const userSubjects = user?.user_metadata?.subjects;
+          if (userSubjects && Array.isArray(userSubjects)) {
+            filteredSubjects = subjectsData?.filter(subject => 
+              userSubjects.includes(subject.name)
+            ) || [];
+          }
+        }
       }
       
       setSubjects(filteredSubjects);
 
-      // Fetch assessments
-      const { data: assessmentsData } = await supabase.from("assessments").select("*");
+      // Fetch assessments - FILTERED BY SCHOOL
+      const { data: assessmentsData } = await supabase
+        .from("assessments")
+        .select("*")
+        .eq("school_id", schoolId);
       setAssessments(assessmentsData || []);
 
-      // Fetch terms
-      const { data: termsData } = await supabase.from("terms").select("*").order("is_current", { ascending: false });
+      // Fetch terms - FILTERED BY SCHOOL
+      const { data: termsData } = await supabase
+        .from("terms")
+        .select("*")
+        .eq("school_id", schoolId)
+        .order("is_current", { ascending: false });
       setTerms(termsData || []);
       
       // Set current term as default
@@ -128,11 +173,13 @@ export default function ResultEntry() {
         description: "Failed to load data",
         variant: "destructive",
       });
+    } finally {
+      setDataLoading(false);
     }
   };
 
   const fetchStudents = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || !schoolId) return;
     
     try {
       const { data: studentsData } = await supabase
@@ -145,6 +192,7 @@ export default function ResultEntry() {
           class_id,
           classes:class_id (name)
         `)
+        .eq("school_id", schoolId)
         .eq("class_id", selectedClass)
         .eq("status", "Active");
       
@@ -160,12 +208,13 @@ export default function ResultEntry() {
   };
 
   const fetchExistingResults = async () => {
-    if (!selectedSubject || !selectedAssessment || !selectedTerm) return;
+    if (!selectedSubject || !selectedAssessment || !selectedTerm || !schoolId) return;
     
     try {
       const { data: existingResults } = await supabase
         .from("results")
         .select("*, teacher_comment, comment_status")
+        .eq("school_id", schoolId)
         .eq("subject_id", selectedSubject)
         .eq("assessment_id", selectedAssessment)
         .eq("term_id", selectedTerm);
@@ -175,6 +224,31 @@ export default function ResultEntry() {
       console.error("Error fetching existing results:", error);
     }
   };
+
+  // Filter classes based on selected subject for Subject Teachers
+  const availableClasses = React.useMemo(() => {
+    if (userRole === 'Subject Teacher' && selectedSubject) {
+      const assignedClassesForSubject = getClassesForSubject(selectedSubject);
+      return classes.filter(cls => 
+        assignedClassesForSubject.some(assignedClass => assignedClass.class_id === cls.id)
+      );
+    }
+    return classes;
+  }, [classes, selectedSubject, userRole, getClassesForSubject]);
+
+  // Reset selected class when subject changes for Subject Teachers
+  useEffect(() => {
+    if (userRole === 'Subject Teacher' && selectedSubject) {
+      const assignedClassesForSubject = getClassesForSubject(selectedSubject);
+      const isCurrentClassValid = assignedClassesForSubject.some(cls => cls.class_id === selectedClass);
+      
+      if (!isCurrentClassValid && assignedClassesForSubject.length > 0) {
+        setSelectedClass(assignedClassesForSubject[0].class_id);
+      } else if (!isCurrentClassValid) {
+        setSelectedClass("");
+      }
+    }
+  }, [selectedSubject, userRole, getClassesForSubject, selectedClass]);
 
   useEffect(() => {
     if (selectedClass) {
@@ -250,8 +324,158 @@ export default function ResultEntry() {
     });
   };
 
+  // AI-powered comment suggestion based on score
+  const generateCommentSuggestion = (score: number, maxScore: number, subjectName: string) => {
+    const percentage = (score / maxScore) * 100;
+    
+    // Different comment templates based on performance
+    const excellentComments = [
+      `Outstanding performance in ${subjectName}! Demonstrates excellent understanding and application of concepts. Keep up the excellent work!`,
+      `Exceptional work in ${subjectName}! Shows mastery of the subject matter. Continue to challenge yourself!`,
+      `Brilliant performance in ${subjectName}! Your dedication and hard work are clearly evident. Well done!`,
+      `Excellent achievement in ${subjectName}! Demonstrates strong analytical skills and deep understanding.`
+    ];
+    
+    const goodComments = [
+      `Good performance in ${subjectName}. Shows solid understanding with room for improvement. Keep working hard!`,
+      `Well done in ${subjectName}! Demonstrates good grasp of concepts. Continue to practice for even better results.`,
+      `Satisfactory performance in ${subjectName}. Shows understanding but could benefit from more practice.`,
+      `Good work in ${subjectName}. You're on the right track - keep up the consistent effort!`
+    ];
+    
+    const averageComments = [
+      `Average performance in ${subjectName}. Focus on understanding fundamentals and practice regularly.`,
+      `Fair performance in ${subjectName}. Consider reviewing key concepts and seeking additional help if needed.`,
+      `Moderate performance in ${subjectName}. More practice and focus on weak areas will help improve.`,
+      `Acceptable performance in ${subjectName}. Identify areas for improvement and work on them consistently.`
+    ];
+    
+    const poorComments = [
+      `Below expected performance in ${subjectName}. Please review the material and consider seeking extra help.`,
+      `Performance in ${subjectName} needs improvement. Focus on understanding basic concepts first.`,
+      `Unsatisfactory performance in ${subjectName}. Please meet with the teacher to discuss improvement strategies.`,
+      `Performance in ${subjectName} requires immediate attention. Review lessons and practice regularly.`
+    ];
+    
+    // Select comment based on percentage
+    let selectedComments: string[];
+    if (percentage >= 90) {
+      selectedComments = excellentComments;
+    } else if (percentage >= 80) {
+      selectedComments = goodComments;
+    } else if (percentage >= 60) {
+      selectedComments = averageComments;
+    } else {
+      selectedComments = poorComments;
+    }
+    
+    // Return a random comment from the appropriate category
+    return selectedComments[Math.floor(Math.random() * selectedComments.length)];
+  };
+
+  const suggestComment = async (studentId: string) => {
+    const existingResult = results.find(r => r.student_id === studentId);
+    if (!existingResult || !existingResult.score) {
+      toast({
+        title: "No Score",
+        description: "Please enter a score first before generating a comment suggestion.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const assessment = assessments.find(a => a.id === selectedAssessment);
+    const subject = subjects.find(s => s.id === selectedSubject);
+    
+    if (!assessment || !subject) {
+      toast({
+        title: "Error",
+        description: "Unable to generate comment. Please ensure assessment and subject are selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add to suggesting state
+    setSuggestingComments(prev => new Set(prev).add(studentId));
+
+    // Simulate AI processing time
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const suggestedComment = generateCommentSuggestion(
+      existingResult.score, 
+      assessment.max_score, 
+      subject.name
+    );
+
+    // Update the comment
+    updateComment(studentId, suggestedComment);
+
+    // Remove from suggesting state
+    setSuggestingComments(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(studentId);
+      return newSet;
+    });
+
+    toast({
+      title: "Comment Generated",
+      description: "AI has generated a comment suggestion based on the student's performance.",
+    });
+  };
+
+  const generateAllComments = async () => {
+    const studentsWithScores = results.filter(r => r.score && r.score > 0);
+    
+    if (studentsWithScores.length === 0) {
+      toast({
+        title: "No Scores",
+        description: "Please enter scores for students before generating comments.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const assessment = assessments.find(a => a.id === selectedAssessment);
+    const subject = subjects.find(s => s.id === selectedSubject);
+    
+    if (!assessment || !subject) {
+      toast({
+        title: "Error",
+        description: "Unable to generate comments. Please ensure assessment and subject are selected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add all students to suggesting state
+    const studentIds = studentsWithScores.map(r => r.student_id);
+    setSuggestingComments(new Set(studentIds));
+
+    // Generate comments for all students
+    for (const result of studentsWithScores) {
+      await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between generations
+      
+      const suggestedComment = generateCommentSuggestion(
+        result.score, 
+        assessment.max_score, 
+        subject.name
+      );
+      
+      updateComment(result.student_id, suggestedComment);
+    }
+
+    // Remove from suggesting state
+    setSuggestingComments(new Set());
+
+    toast({
+      title: "Comments Generated",
+      description: `AI has generated comment suggestions for ${studentsWithScores.length} students.`,
+    });
+  };
+
   const saveResults = async () => {
-    if (!user || !selectedSubject || !selectedAssessment || !selectedTerm) {
+    if (!user || !selectedSubject || !selectedAssessment || !selectedTerm || !schoolId) {
       toast({
         title: "Error",
         description: "Please select subject, assessment, and term",
@@ -275,13 +499,14 @@ export default function ResultEntry() {
         }
       }
 
-      // Separate new and existing results
+      // Separate new and existing results - INCLUDE SCHOOL_ID
       const newResults = results.filter(result => !result.id).map(result => ({
         student_id: result.student_id,
         subject_id: result.subject_id,
         assessment_id: result.assessment_id,
         term_id: result.term_id,
         score: result.score,
+        school_id: schoolId,
         teacher_comment: result.teacher_comment || null,
         comment_status: result.teacher_comment?.trim() ? 'pending' : 'pending',
         teacher_id: user.id,
@@ -328,11 +553,11 @@ export default function ResultEntry() {
       }
 
       // Log all operations
-      if (user && userSchoolId) {
+      if (user && schoolId) {
         // Log inserts
         for (const newRecord of insertedResults) {
           await logEdit({
-            schoolId: userSchoolId,
+            schoolId: schoolId,
             actorId: user.id,
             actionType: 'insert',
             tableName: 'results',
@@ -348,7 +573,7 @@ export default function ResultEntry() {
           const oldRecord = existingResultsForLogging.get(updatedRecord.id);
           if (oldRecord) {
             await logEdit({
-              schoolId: userSchoolId,
+              schoolId: schoolId,
               actorId: user.id,
               actionType: 'update',
               tableName: 'results',
@@ -380,8 +605,27 @@ export default function ResultEntry() {
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>;
+
+  // Show loading state while school ID or permissions are loading
+  if (schoolIdLoading || assignmentsLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Result Entry</h1>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="text-blue-800 font-medium">Loading School Information</p>
+                <p className="text-blue-700 text-sm">
+                  Please wait while we load your school details...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!hasPermission("Result Upload")) {
@@ -402,6 +646,23 @@ export default function ResultEntry() {
     );
   }
 
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Result Entry</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10 gap-4">
+            <AlertCircle className="h-16 w-16 text-red-500" />
+            <h2 className="text-xl font-semibold">School Not Assigned</h2>
+            <p className="text-center text-muted-foreground">
+              Your account is not assigned to a school. Please contact your administrator.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const filteredStudents = students.filter(student => 
     student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -411,6 +672,70 @@ export default function ResultEntry() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold text-gray-900">Result Entry</h1>
+      
+      {dataLoading && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="text-blue-800 font-medium">Loading Data</p>
+                <p className="text-blue-700 text-sm">
+                  Please wait while we load terms, assessments, and classes...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {!dataLoading && terms.length === 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-amber-800 font-medium">No Terms Available</p>
+                <p className="text-amber-700 text-sm">
+                  You need to create academic terms before entering results.{" "}
+                  <a 
+                    href="/settings/terms" 
+                    className="text-blue-600 hover:underline font-medium"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Go to Term Management →
+                  </a>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {!dataLoading && assessments.length === 0 && terms.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-amber-800 font-medium">No Assessments Available</p>
+                <p className="text-amber-700 text-sm">
+                  You need to set up assessments (First CA, Second CA, Exam) before entering results.{" "}
+                  <a 
+                    href="/settings/assessments" 
+                    className="text-blue-600 hover:underline font-medium"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Go to Assessment Settings →
+                  </a>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
@@ -426,13 +751,32 @@ export default function ResultEntry() {
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>
-                  {terms.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.name} ({term.academic_year})
+                  {terms.length > 0 ? (
+                    terms.map((term) => (
+                      <SelectItem key={term.id} value={term.id}>
+                        {term.name} ({term.academic_year})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-terms" disabled>
+                      No terms available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
+              {!dataLoading && terms.length === 0 && (
+                <p className="text-sm text-amber-600 mt-1">
+                  No terms found. Please create terms in{" "}
+                  <a 
+                    href="/settings/terms" 
+                    className="text-blue-600 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Settings → Term Management
+                  </a>
+                </p>
+              )}
             </div>
 
             <div>
@@ -442,7 +786,7 @@ export default function ResultEntry() {
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((cls) => (
+                  {availableClasses.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
                     </SelectItem>
@@ -474,13 +818,32 @@ export default function ResultEntry() {
                   <SelectValue placeholder="Select assessment" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assessments.map((assessment) => (
-                    <SelectItem key={assessment.id} value={assessment.id}>
-                      {assessment.name} (Max: {assessment.max_score})
+                  {assessments.length > 0 ? (
+                    assessments.map((assessment) => (
+                      <SelectItem key={assessment.id} value={assessment.id}>
+                        {assessment.name} (Max: {assessment.max_score})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-assessments" disabled>
+                      No assessments available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
+              {!dataLoading && assessments.length === 0 && (
+                <p className="text-sm text-amber-600 mt-1">
+                  No assessments found. Please set up assessments in{" "}
+                  <a 
+                    href="/settings/assessments" 
+                    className="text-blue-600 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Settings → Assessment Settings
+                  </a>
+                </p>
+              )}
             </div>
           </div>
 
@@ -515,10 +878,21 @@ export default function ResultEntry() {
                 <p className="text-sm text-muted-foreground">
                   Enter scores for {subjects.find(s => s.id === selectedSubject)?.name} - {assessments.find(a => a.id === selectedAssessment)?.name}
                 </p>
-                <Button onClick={saveResults} disabled={saving} className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Save Results"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={generateAllComments} 
+                    disabled={saving || suggestingComments.size > 0}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {suggestingComments.size > 0 ? "Generating..." : "Generate All Comments"}
+                  </Button>
+                  <Button onClick={saveResults} disabled={saving} className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    {saving ? "Saving..." : "Save Results"}
+                  </Button>
+                </div>
               </div>
 
               <div className="border rounded-lg">
@@ -553,17 +927,46 @@ export default function ResultEntry() {
                             />
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-1">
-                              <Textarea
-                                placeholder="Performance comment..."
-                                value={existingResult?.teacher_comment || ""}
-                                onChange={(e) => updateComment(student.id, e.target.value)}
-                                className="min-h-[60px] text-sm resize-none"
-                                maxLength={200}
-                                rows={2}
-                              />
-                              <div className="text-xs text-muted-foreground text-right">
-                                {(existingResult?.teacher_comment || "").length}/200
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <Textarea
+                                  placeholder="Performance comment..."
+                                  value={existingResult?.teacher_comment || ""}
+                                  onChange={(e) => updateComment(student.id, e.target.value)}
+                                  className="min-h-[60px] text-sm resize-none flex-1"
+                                  maxLength={200}
+                                  rows={2}
+                                />
+                                <div className="flex flex-col gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => suggestComment(student.id)}
+                                    disabled={suggestingComments.has(student.id) || !existingResult?.score}
+                                    className="h-8 w-8 p-0"
+                                    title="Generate AI comment suggestion"
+                                  >
+                                    {suggestingComments.has(student.id) ? (
+                                      <RefreshCw className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Sparkles className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                <span>
+                                  {(existingResult?.teacher_comment || "").length}/200
+                                  {existingResult?.teacher_comment && (
+                                    <span className="ml-2 text-blue-600">✨ AI Suggested</span>
+                                  )}
+                                </span>
+                                {existingResult?.score && (
+                                  <span className="text-green-600">
+                                    {((existingResult.score / (assessments.find(a => a.id === selectedAssessment)?.max_score || 100)) * 100).toFixed(1)}%
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </TableCell>

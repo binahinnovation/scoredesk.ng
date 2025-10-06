@@ -24,7 +24,9 @@ import {
   Calendar,
   User,
   Database,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -80,54 +82,178 @@ export default function AuditLogsPage() {
   });
   const [selectedLog, setSelectedLog] = useState<EditLog | null>(null);
   const [showLogDetails, setShowLogDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
-  // Fetch audit logs
-  const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ['audit-logs', filters],
+  // Fetch audit logs with pagination
+  const { data: logsData = { logs: [], total: 0 }, isLoading, refetch, error } = useQuery({
+    queryKey: ['audit-logs', filters, currentPage, pageSize],
     queryFn: async () => {
-      let query = supabase
+      const offset = (currentPage - 1) * pageSize;
+
+      // Build base query for filtering
+      const startDateTime = filters.startDate + 'T00:00:00';
+      const endDateTime = filters.endDate + 'T23:59:59';
+      
+      
+      let baseQuery = supabase
         .from('edit_logs')
         .select(`
           *,
-          profiles:actor_id (full_name)
+          profiles!actor_id (full_name)
         `)
-        .gte('created_at', filters.startDate + 'T00:00:00')
-        .lte('created_at', filters.endDate + 'T23:59:59')
-        .order('created_at', { ascending: false })
-        .limit(500); // Limit for performance
+        .gte('created_at', startDateTime)
+        .lte('created_at', endDateTime);
 
+      // Apply filters
       if (filters.actorId !== 'all') {
-        query = query.eq('actor_id', filters.actorId);
+        baseQuery = baseQuery.eq('actor_id', filters.actorId);
       }
 
       if (filters.tableName !== 'all') {
-        query = query.eq('table_name', filters.tableName);
+        baseQuery = baseQuery.eq('table_name', filters.tableName);
       }
 
       if (filters.actionType !== 'all') {
-        query = query.eq('action_type', filters.actionType);
+        baseQuery = baseQuery.eq('action_type', filters.actionType);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-
-      // Client-side search filter
-      let filteredData = data || [];
+      // Apply search filter at database level if provided
       if (filters.searchTerm) {
+        // For search, we need to get all matching records first, then paginate
+        const { data: allMatchingData, error: allDataError } = await baseQuery
+          .order('created_at', { ascending: false });
+
+        if (allDataError) throw allDataError;
+
+        // Apply client-side search filter
         const searchLower = filters.searchTerm.toLowerCase();
-        filteredData = filteredData.filter(log => 
+        const filteredData = (allMatchingData || []).filter(log => 
           log.record_id.toLowerCase().includes(searchLower) ||
           log.reason?.toLowerCase().includes(searchLower) ||
           log.profiles?.full_name?.toLowerCase().includes(searchLower) ||
           JSON.stringify(log.old_value || {}).toLowerCase().includes(searchLower) ||
           JSON.stringify(log.new_value || {}).toLowerCase().includes(searchLower)
         );
-      }
 
-      return filteredData as EditLog[];
+        // Calculate pagination on filtered data
+        const totalCount = filteredData.length;
+        const paginatedData = filteredData.slice(offset, offset + pageSize);
+
+
+        return {
+          logs: paginatedData as EditLog[],
+          total: totalCount
+        };
+      } else {
+        // No search filter - use efficient database pagination
+        // Get total count first
+        const { count: totalCount, error: countError } = await baseQuery
+          .select('*', { count: 'exact', head: true });
+        
+        if (countError) throw countError;
+
+        // Get paginated data
+        const { data, error } = await baseQuery
+          .order('created_at', { ascending: false })
+          .range(offset, offset + pageSize - 1);
+
+
+        if (error) throw error;
+
+        return {
+          logs: (data || []) as EditLog[],
+          total: totalCount || 0
+        };
+      }
     },
     enabled: hasPermission('User Management') || hasPermission('Result Approval')
   });
+
+  // Fetch statistics separately to show accurate counts for all filtered data
+  const { data: statsData } = useQuery({
+    queryKey: ['audit-logs-stats', filters],
+    queryFn: async () => {
+      // Build base query for statistics
+      let baseQuery = supabase
+        .from('edit_logs')
+        .select(`
+          action_type,
+          profiles!actor_id (full_name)
+        `)
+        .gte('created_at', filters.startDate + 'T00:00:00')
+        .lte('created_at', filters.endDate + 'T23:59:59');
+
+      // Apply filters
+      if (filters.actorId !== 'all') {
+        baseQuery = baseQuery.eq('actor_id', filters.actorId);
+      }
+
+      if (filters.tableName !== 'all') {
+        baseQuery = baseQuery.eq('table_name', filters.tableName);
+      }
+
+      if (filters.actionType !== 'all') {
+        baseQuery = baseQuery.eq('action_type', filters.actionType);
+      }
+
+      const { data, error } = await baseQuery.order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Apply search filter if provided
+      let filteredData = data || [];
+      if (filters.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        filteredData = filteredData.filter(log => 
+          log.profiles?.full_name?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Calculate statistics
+      const totalCount = filteredData.length;
+      const insertCount = filteredData.filter(log => log.action_type === 'insert').length;
+      const updateCount = filteredData.filter(log => log.action_type === 'update').length;
+      const deleteCount = filteredData.filter(log => log.action_type === 'delete').length;
+
+      return {
+        total: totalCount,
+        inserts: insertCount,
+        updates: updateCount,
+        deletes: deleteCount
+      };
+    },
+    enabled: hasPermission('User Management') || hasPermission('Result Approval')
+  });
+
+  const logs = logsData.logs;
+  const totalLogs = logsData.total || statsData?.total || 0;
+  const totalPages = Math.ceil(totalLogs / pageSize);
+
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  // Pagination handlers
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   // Fetch users for actor filter
   const { data: users = [] } = useQuery({
@@ -341,67 +467,74 @@ export default function AuditLogsPage() {
         </CardContent>
       </Card>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Logs</p>
-                <p className="text-2xl font-bold">{logs.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 bg-green-500 rounded" />
-              <div>
-                <p className="text-sm text-muted-foreground">Inserts</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {logs.filter(log => log.action_type === 'insert').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 bg-blue-500 rounded" />
-              <div>
-                <p className="text-sm text-muted-foreground">Updates</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {logs.filter(log => log.action_type === 'update').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 bg-red-500 rounded" />
-              <div>
-                <p className="text-sm text-muted-foreground">Deletes</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {logs.filter(log => log.action_type === 'delete').length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+       {/* Statistics */}
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center gap-2">
+               <Database className="h-5 w-5 text-blue-600" />
+               <div>
+                 <p className="text-sm text-muted-foreground">Total Logs</p>
+                 <p className="text-2xl font-bold">{statsData?.total || totalLogs}</p>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center gap-2">
+               <div className="h-5 w-5 bg-green-500 rounded" />
+               <div>
+                 <p className="text-sm text-muted-foreground">Inserts</p>
+                 <p className="text-2xl font-bold text-green-600">
+                   {statsData?.inserts || 0}
+                 </p>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center gap-2">
+               <div className="h-5 w-5 bg-blue-500 rounded" />
+               <div>
+                 <p className="text-sm text-muted-foreground">Updates</p>
+                 <p className="text-2xl font-bold text-blue-600">
+                   {statsData?.updates || 0}
+                 </p>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center gap-2">
+               <div className="h-5 w-5 bg-red-500 rounded" />
+               <div>
+                 <p className="text-sm text-muted-foreground">Deletes</p>
+                 <p className="text-2xl font-bold text-red-600">
+                   {statsData?.deletes || 0}
+                 </p>
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+       </div>
 
       {/* Logs Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Audit Trail ({logs.length} entries)</CardTitle>
+           <CardTitle>
+             Audit Trail ({totalLogs} entries)
+             {totalLogs >= 15 && (
+               <span className="text-sm font-normal text-muted-foreground ml-2">
+                 - Page {currentPage} of {totalPages}
+               </span>
+             )}
+           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -488,6 +621,86 @@ export default function AuditLogsPage() {
           )}
         </CardContent>
       </Card>
+
+
+       {/* Pagination Controls */}
+       {totalLogs >= 15 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalLogs)} of {totalLogs} entries</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="pageSize" className="text-sm">Rows per page:</Label>
+                  <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="15">15</SelectItem>
+                       <SelectItem value="20">20</SelectItem>
+                       <SelectItem value="50">50</SelectItem>
+                       <SelectItem value="100">100</SelectItem>
+                     </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Log Details Dialog */}
       <Dialog open={showLogDetails} onOpenChange={setShowLogDetails}>

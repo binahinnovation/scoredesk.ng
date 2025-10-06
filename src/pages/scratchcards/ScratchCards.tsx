@@ -13,6 +13,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { CreditCard, Plus, Eye, RefreshCw, AlertCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 interface ScratchCard {
   id: string;
@@ -55,6 +56,7 @@ const generatePIN = () => {
 };
 
 const ScratchCards = () => {
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [quantity, setQuantity] = useState<number>(10);
   const [price, setPrice] = useState<number>(100);
   const [selectedTerm, setSelectedTerm] = useState<string>('');
@@ -73,11 +75,14 @@ const ScratchCards = () => {
     refetch: refetchCards 
   } = useSupabaseQuery<ScratchCard[]>(
     async () => {
+      if (!schoolId) return { data: [], error: null };
+
       console.log("Fetching scratch cards...");
       try {
         const { data, error } = await supabase
           .from('scratch_cards')
           .select('*')
+          .eq('school_id', schoolId)
           .order('created_at', { ascending: false });
         
         console.log("Scratch cards query result:", { data, error });
@@ -93,7 +98,7 @@ const ScratchCards = () => {
         return { data: null, error: err };
       }
     },
-    []
+    [schoolId]
   );
 
   const { 
@@ -102,11 +107,14 @@ const ScratchCards = () => {
     error: termsError 
   } = useSupabaseQuery<Term[]>(
     async () => {
+      if (!schoolId) return { data: [], error: null };
+
       console.log("Fetching terms...");
       try {
         const { data, error } = await supabase
           .from('terms')
           .select('*')
+          .eq('school_id', schoolId)
           .order('created_at', { ascending: false });
         
         console.log("Terms query result:", { data, error });
@@ -122,7 +130,7 @@ const ScratchCards = () => {
         return { data: null, error: err };
       }
     },
-    []
+    [schoolId]
   );
 
   const { 
@@ -131,11 +139,14 @@ const ScratchCards = () => {
     error: studentsError 
   } = useSupabaseQuery<Student[]>(
     async () => {
+      if (!schoolId) return { data: [], error: null };
+
       console.log("Fetching students...");
       try {
         const { data, error } = await supabase
           .from('students')
           .select('id, student_id, first_name, last_name, class_id')
+          .eq('school_id', schoolId)
           .order('first_name', { ascending: true });
         
         console.log("Students query result:", { data, error });
@@ -151,7 +162,7 @@ const ScratchCards = () => {
         return { data: null, error: err };
       }
     },
-    []
+    [schoolId]
   );
 
   console.log("Component state:", {
@@ -222,6 +233,15 @@ const ScratchCards = () => {
       return;
     }
 
+    if (!schoolId) {
+      toast({
+        title: "Error",
+        description: "School ID not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newCards = Array.from({ length: quantity }, () => ({
       serial_number: generateSerialNumber(),
       pin: generatePIN(),
@@ -230,6 +250,7 @@ const ScratchCards = () => {
       revenue_generated: 0,
       status: 'Active',
       term_id: selectedTerm,
+      school_id: schoolId,
       usage_count: 0,
       max_usage_count: 3,
     }));

@@ -118,7 +118,7 @@ const StudentResultPortal = () => {
       const normalizedInput = normalizeId(trimmedId);
       
       // Simplified flexible search
-      let { data: studentsData, error: studentError } = await supabase
+      const { data: studentsData, error: studentError } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
         .eq('status', 'Active')

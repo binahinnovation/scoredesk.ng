@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/use-toast";
 import { Plus, Edit, Trash2, BookOpen, Users } from "lucide-react";
 import { useUserRole } from '@/hooks/use-user-role';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 // Nigerian school structure
 const NIGERIAN_CLASSES = [
@@ -67,6 +68,7 @@ interface ClassSubject {
 }
 
 export default function ClassSubjectManagement() {
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -99,38 +101,48 @@ export default function ClassSubjectManagement() {
       .substring(0, 4);
   };
 
-  // Fetch classes
+  // Fetch classes - FILTERED BY SCHOOL
   const { data: classes = [], isLoading: classesLoading } = useQuery({
-    queryKey: ['classes'],
+    queryKey: ['classes', schoolId],
     queryFn: async () => {
+      if (!schoolId) return [];
+
       const { data, error } = await supabase
         .from('classes')
         .select('*')
+        .eq('school_id', schoolId)
         .order('name');
 
       if (error) throw error;
       return data as Class[];
-    }
+    },
+    enabled: !!schoolId && !schoolIdLoading,
   });
 
-  // Fetch subjects
+  // Fetch subjects - FILTERED BY SCHOOL
   const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
-    queryKey: ['subjects'],
+    queryKey: ['subjects', schoolId],
     queryFn: async () => {
+      if (!schoolId) return [];
+
       const { data, error } = await supabase
         .from('subjects')
         .select('*')
+        .eq('school_id', schoolId)
         .order('name');
 
       if (error) throw error;
       return data as Subject[];
-    }
+    },
+    enabled: !!schoolId && !schoolIdLoading,
   });
 
-  // Fetch class-subject assignments
+  // Fetch class-subject assignments - FILTERED BY SCHOOL
   const { data: classSubjects = [] } = useQuery({
-    queryKey: ['class-subjects'],
+    queryKey: ['class-subjects', schoolId],
     queryFn: async () => {
+      if (!schoolId) return [];
+
       const { data, error } = await supabase
         .from('class_subjects')
         .select(`
@@ -142,15 +154,18 @@ export default function ClassSubjectManagement() {
 
       if (error) throw error;
       return data as ClassSubject[];
-    }
+    },
+    enabled: !!schoolId && !schoolIdLoading,
   });
 
   // Class mutations
   const createClassMutation = useMutation({
     mutationFn: async (classData: typeof classFormData) => {
+      if (!schoolId) throw new Error('School ID is required');
+
       const { data, error } = await supabase
         .from('classes')
-        .insert([classData])
+        .insert([{ ...classData, school_id: schoolId }])
         .select()
         .single();
 
@@ -158,7 +173,7 @@ export default function ClassSubjectManagement() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes', schoolId] });
       toast({ title: "Class created successfully" });
       setIsClassDialogOpen(false);
       resetClassForm();
@@ -185,7 +200,7 @@ export default function ClassSubjectManagement() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes', schoolId] });
       toast({ title: "Class updated successfully" });
       setIsClassDialogOpen(false);
       resetClassForm();
@@ -209,7 +224,7 @@ export default function ClassSubjectManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes', schoolId] });
       toast({ title: "Class deleted successfully" });
     },
     onError: (error: any) => {
@@ -224,10 +239,13 @@ export default function ClassSubjectManagement() {
   // Subject mutations
   const createSubjectMutation = useMutation({
     mutationFn: async (subjectData: typeof subjectFormData) => {
+      if (!schoolId) throw new Error('School ID is required');
+
       // Auto-generate code if not provided
       const finalData = {
         ...subjectData,
-        code: subjectData.code || generateSubjectCode(subjectData.name)
+        code: subjectData.code || generateSubjectCode(subjectData.name),
+        school_id: schoolId
       };
 
       const { data, error } = await supabase
@@ -240,7 +258,7 @@ export default function ClassSubjectManagement() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects', schoolId] });
       toast({ title: "Subject created successfully" });
       setIsSubjectDialogOpen(false);
       resetSubjectForm();
@@ -267,7 +285,7 @@ export default function ClassSubjectManagement() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects', schoolId] });
       toast({ title: "Subject updated successfully" });
       setIsSubjectDialogOpen(false);
       resetSubjectForm();
@@ -291,7 +309,7 @@ export default function ClassSubjectManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects', schoolId] });
       toast({ title: "Subject deleted successfully" });
     },
     onError: (error: any) => {
@@ -325,7 +343,7 @@ export default function ClassSubjectManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['class-subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subjects', schoolId] });
       toast({ title: "Subjects assigned successfully" });
       setIsAssignDialogOpen(false);
       setSelectedClass('');
@@ -342,6 +360,11 @@ export default function ClassSubjectManagement() {
 
   // Quick add all Nigerian classes
   const addAllNigerianClasses = async () => {
+    if (!schoolId) {
+      toast({ title: "School ID not found", variant: "destructive" });
+      return;
+    }
+
     try {
       const existingClasses = classes.map(c => c.name);
       const missingClasses = NIGERIAN_CLASSES.filter(name => !existingClasses.includes(name));
@@ -351,12 +374,12 @@ export default function ClassSubjectManagement() {
         return;
       }
 
-      const classInserts = missingClasses.map(name => ({ name }));
+      const classInserts = missingClasses.map(name => ({ name, school_id: schoolId }));
       const { error } = await supabase.from('classes').insert(classInserts);
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes', schoolId] });
       toast({ 
         title: "Success", 
         description: `Added ${missingClasses.length} Nigerian standard classes` 
@@ -372,6 +395,11 @@ export default function ClassSubjectManagement() {
 
   // Quick add all Nigerian subjects
   const addAllNigerianSubjects = async () => {
+    if (!schoolId) {
+      toast({ title: "School ID not found", variant: "destructive" });
+      return;
+    }
+
     try {
       const existingSubjects = subjects.map(s => s.name);
       const missingSubjects = NIGERIAN_SUBJECTS.filter(name => !existingSubjects.includes(name));
@@ -383,13 +411,14 @@ export default function ClassSubjectManagement() {
 
       const subjectInserts = missingSubjects.map(name => ({
         name,
-        code: generateSubjectCode(name)
+        code: generateSubjectCode(name),
+        school_id: schoolId
       }));
       const { error } = await supabase.from('subjects').insert(subjectInserts);
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['subjects', schoolId] });
       toast({ 
         title: "Success", 
         description: `Added ${missingSubjects.length} Nigerian standard subjects` 

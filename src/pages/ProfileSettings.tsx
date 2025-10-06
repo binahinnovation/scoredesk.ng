@@ -132,7 +132,7 @@ export default function ProfileSettings() {
     }
   }
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) {
       return;
     }
@@ -146,27 +146,47 @@ export default function ProfileSettings() {
       setAvatarUrl(reader.result as string);
     };
     reader.readAsDataURL(file);
+    
+    // Auto-upload the file immediately
+    await uploadAvatarFile(file);
   };
 
-  const uploadAvatar = async () => {
-    if (!avatarFile || !user) return;
+  const uploadAvatarFile = async (file: File) => {
+    if (!user) return;
     
     setUploading(true);
     
     try {
-      // Upload file to storage
-      const fileExt = avatarFile.name.split('.').pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error("File size must be less than 5MB");
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error("Please select an image file");
+      }
+      
+      // Upload file to storage with unique filename
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const timestamp = Date.now();
+      const filePath = `school-logos/${user.id}_${timestamp}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, avatarFile, { upsert: true });
+        .from('school-logos')
+        .upload(filePath, file, { 
+          upsert: true,
+          cacheControl: '3600'
+        });
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
       
       // Get public URL
       const { data } = supabase.storage
-        .from('avatars')
+        .from('school-logos')
         .getPublicUrl(filePath);
       
       // Update user profile with avatar URL
@@ -175,19 +195,32 @@ export default function ProfileSettings() {
         .update({ avatar_url: data.publicUrl })
         .eq('id', user.id);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Update error:", updateError);
+        throw updateError;
+      }
       
       setAvatarUrl(data.publicUrl);
+      
+      toast({
+        title: "Logo uploaded successfully",
+        description: "Your school logo has been updated.",
+      });
     } catch (error: any) {
-      console.error("Error uploading avatar:", error.message);
+      console.error("Error uploading avatar:", error);
       toast({
         variant: "destructive",
-        title: "Error uploading avatar",
-        description: error.message,
+        title: "Error uploading logo",
+        description: error.message || "Failed to upload logo. Please try again.",
       });
     } finally {
       setUploading(false);
     }
+  };
+
+  const uploadAvatar = async () => {
+    if (!avatarFile || !user) return;
+    await uploadAvatarFile(avatarFile);
   };
 
   // Generate initials for avatar fallback
@@ -226,35 +259,34 @@ export default function ProfileSettings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center gap-4">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarUrl || ""} alt="School Logo" />
-                <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+              <Avatar className="h-32 w-32 border-2 border-gray-200">
+                <AvatarImage src={avatarUrl || ""} alt="School Logo" className="object-cover" />
+                <AvatarFallback className="text-xl bg-primary text-primary-foreground">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
               
               <div className="flex flex-col items-center gap-2 w-full">
-                <label htmlFor="avatar" className="w-full">
-                  <Button 
-                    variant="outline" 
-                    className="w-full cursor-pointer" 
-                    type="button"
-                    disabled={uploading}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploading ? "Uploading..." : "Upload Logo"}
-                  </Button>
-                  <input
-                    id="avatar"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
+                <input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  disabled={uploading}
+                />
+                <Button 
+                  variant="outline" 
+                  className="w-full cursor-pointer" 
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => document.getElementById('avatar')?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploading ? "Uploading..." : "Upload Logo"}
+                </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  Recommended: Square image, at least 500x500px
+                  Recommended: Square image, at least 500x500px, max 5MB
                 </p>
               </div>
             </CardContent>

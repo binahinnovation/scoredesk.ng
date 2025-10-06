@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { useSchoolId } from "@/hooks/use-school-id";
 
 interface StudentResult {
   student_id: string;
@@ -39,7 +40,7 @@ interface StudentResult {
 export default function StudentResultApproval() {
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
-  const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<StudentResult[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,34 +54,29 @@ export default function StudentResultApproval() {
   const [bulkApproving, setBulkApproving] = useState(false);
   const [approvalReason, setApprovalReason] = useState("");
 
-  // Fetch user's school ID for audit logging
   useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (user) {
-        const schoolId = await getCurrentUserSchoolId();
-        setUserSchoolId(schoolId);
-      }
-    };
-    fetchSchoolId();
-  }, [user]);
-
-  useEffect(() => {
-    if (hasPermission("Result Approval")) {
+    if (hasPermission("Result Approval") && schoolId && !schoolIdLoading) {
       fetchData();
     }
-  }, [hasPermission]);
+  }, [hasPermission, schoolId, schoolIdLoading]);
 
   useEffect(() => {
     filterResults();
   }, [studentResults, searchTerm, statusFilter, classFilter, termFilter]);
 
   const fetchData = async () => {
+    if (!schoolId) {
+      console.warn('No school_id available for student result approval');
+      setLoadingData(false);
+      return;
+    }
+
     setLoadingData(true);
     try {
-      // Fetch terms and classes
+      // Fetch terms and classes - FILTERED BY SCHOOL
       const [termsRes, classesRes] = await Promise.all([
-        supabase.from("terms").select("*").order("is_current", { ascending: false }),
-        supabase.from("classes").select("*")
+        supabase.from("terms").select("*").eq("school_id", schoolId).order("is_current", { ascending: false }),
+        supabase.from("classes").select("*").eq("school_id", schoolId)
       ]);
 
       setTerms(termsRes.data || []);
@@ -104,8 +100,10 @@ export default function StudentResultApproval() {
   };
 
   const fetchStudentResults = async (termId: string) => {
+    if (!schoolId) return;
+
     try {
-      // Fetch all results with student and subject details
+      // Fetch all results with student and subject details - FILTERED BY SCHOOL
       const { data: resultsData, error } = await supabase
         .from("results")
         .select(`
@@ -126,6 +124,7 @@ export default function StudentResultApproval() {
           assessments:assessment_id (name),
           terms:term_id (name, academic_year)
         `)
+        .eq("school_id", schoolId)
         .eq("term_id", termId);
 
       if (error) throw error;
@@ -256,13 +255,13 @@ export default function StudentResultApproval() {
         .in('id', pendingResultIds);
 
       // Log all approval operations
-      if (user && userSchoolId && oldRecords && newRecords) {
+      if (user && schoolId && oldRecords && newRecords) {
         for (let i = 0; i < oldRecords.length; i++) {
           const oldRecord = oldRecords[i];
           const newRecord = newRecords.find(nr => nr.id === oldRecord.id);
           if (newRecord) {
             await logEdit({
-              schoolId: userSchoolId,
+              schoolId: schoolId,
               actorId: user.id,
               actionType: 'update',
               tableName: 'results',
@@ -350,13 +349,13 @@ export default function StudentResultApproval() {
         .in('id', allPendingIds);
 
       // Log all bulk approval operations
-      if (user && userSchoolId && oldRecords && newRecords) {
+      if (user && schoolId && oldRecords && newRecords) {
         for (let i = 0; i < oldRecords.length; i++) {
           const oldRecord = oldRecords[i];
           const newRecord = newRecords.find(nr => nr.id === oldRecord.id);
           if (newRecord) {
             await logEdit({
-              schoolId: userSchoolId,
+              schoolId: schoolId,
               actorId: user.id,
               actionType: 'update',
               tableName: 'results',

@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -137,30 +138,22 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({
       // Update role
       const { error: roleError } = await supabase
         .from('user_roles')
-        .upsert({
-          user_id: user.user_id,
-          role: formData.role as any,
-          updated_at: new Date().toISOString()
-        });
+        .update({
+          role: formData.role as any
+        })
+        .eq('user_id', user.user_id);
 
       if (roleError) throw roleError;
 
       // Update password if provided
       if (newPassword.trim()) {
-        const { error: passwordError } = await supabase.auth.admin.updateUserById(
-          user.user_id,
-          { password: newPassword }
-        );
-
-        if (passwordError) {
-          console.error('Password update error:', passwordError);
-          // Don't throw here as profile/role updates were successful
-          toast({
-            title: "Partial Success",
-            description: "Profile updated but password change failed. User may need to reset password manually.",
-            variant: "destructive",
-          });
-        }
+        // For now, we'll skip password updates via admin API due to permission issues
+        // The user will need to reset their password manually or through the auth flow
+        toast({
+          title: "Password Update Skipped",
+          description: "Profile and role updated successfully. Password updates require manual reset through the login page.",
+          variant: "default",
+        });
       }
 
       // Fetch updated role for audit logging

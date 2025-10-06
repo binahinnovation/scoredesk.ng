@@ -8,8 +8,8 @@ interface UseSupabaseQueryOptions {
 }
 
 export function useSupabaseQuery<T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>,
-  dependencies: any[] = [],
+  queryFn: () => Promise<{ data: T | null; error: unknown }>,
+  dependencies: unknown[] = [],
   options: UseSupabaseQueryOptions = {}
 ) {
   const [data, setData] = useState<T | null>(null);

@@ -247,7 +247,7 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               className="flex flex-col items-center justify-center h-24 space-y-2"
-              onClick={() => navigate('/terms')}
+              onClick={() => navigate('/settings/terms')}
             >
               <Clock className="h-6 w-6" />
               <span>Term Management</span>

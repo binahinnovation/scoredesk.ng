@@ -7,12 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Users, CheckCircle, Clock, XCircle, Save, UserCheck } from 'lucide-react';
+import { Calendar, Users, CheckCircle, Clock, XCircle, Save, UserCheck, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
+import { useSchoolId } from '@/hooks/use-school-id';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { logEdit, getCurrentUserSchoolId } from '@/utils/auditLogger';
+import { AlertCircle } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -38,6 +41,8 @@ interface Class {
 
 export default function MarkAttendancePage() {
   const { user } = useAuth();
+  const { hasPermission } = useUserRole();
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const queryClient = useQueryClient();
   const [userSchoolId, setUserSchoolId] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -58,37 +63,40 @@ export default function MarkAttendancePage() {
     fetchSchoolId();
   }, [user]);
 
-  // Fetch classes
+  // Fetch classes - FILTERED BY SCHOOL
   const { data: classes = [] } = useQuery({
-    queryKey: ['classes'],
+    queryKey: ['classes', schoolId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('classes')
         .select('id, name')
+        .eq('school_id', schoolId)
         .order('name');
       
       if (error) throw error;
       return data as Class[];
-    }
+    },
+    enabled: !!schoolId
   });
 
-  // Fetch students for selected class
+  // Fetch students for selected class - FILTERED BY SCHOOL
   const { data: students = [], isLoading: studentsLoading } = useQuery({
-    queryKey: ['students', selectedClass],
+    queryKey: ['students', selectedClass, schoolId],
     queryFn: async () => {
-      if (!selectedClass) return [];
+      if (!selectedClass || !schoolId) return [];
       
       const { data, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, status')
         .eq('class_id', selectedClass)
+        .eq('school_id', schoolId)
         .eq('status', 'Active')
         .order('first_name');
       
       if (error) throw error;
       return data as Student[];
     },
-    enabled: !!selectedClass
+    enabled: !!selectedClass && !!schoolId
   });
 
   // Fetch existing attendance records
@@ -117,7 +125,11 @@ export default function MarkAttendancePage() {
   });
 
   // Initialize attendance records when data changes
-  useEffect(() => {
+  const initialAttendanceRecords = React.useMemo(() => {
+    if (!students || students.length === 0) {
+      return new Map<string, AttendanceRecord>();
+    }
+
     const recordsMap = new Map<string, AttendanceRecord>();
     
     // Initialize with existing records
@@ -145,8 +157,13 @@ export default function MarkAttendancePage() {
       }
     });
     
-    setAttendanceRecords(recordsMap);
+    return recordsMap;
   }, [students, existingAttendance, selectedDate, selectedPeriod]);
+
+  // Update attendance records when initial records change
+  useEffect(() => {
+    setAttendanceRecords(initialAttendanceRecords);
+  }, [initialAttendanceRecords]);
 
   // Save attendance mutation
   const saveAttendanceMutation = useMutation({
@@ -302,6 +319,62 @@ export default function MarkAttendancePage() {
     late: Array.from(attendanceRecords.values()).filter(r => r.status === 'late').length,
     total: students.length
   };
+
+  // Permission check
+  if (!hasPermission("Attendance Management")) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10 gap-4">
+            <AlertCircle className="h-16 w-16 text-orange-500" />
+            <h2 className="text-xl font-semibold">Access Restricted</h2>
+            <p className="text-center text-muted-foreground">
+              Only Form Teachers, Principals, and Exam Officers can access attendance management.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (schoolIdLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-blue-600 animate-spin" />
+              <div>
+                <p className="text-blue-800 font-medium">Loading School Information</p>
+                <p className="text-blue-700 text-sm">
+                  Please wait while we load your school details...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold text-gray-900">Mark Attendance</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10 gap-4">
+            <AlertCircle className="h-16 w-16 text-red-500" />
+            <h2 className="text-xl font-semibold">School Not Assigned</h2>
+            <p className="text-center text-muted-foreground">
+              Your account is not assigned to a school. Please contact your administrator.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

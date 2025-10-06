@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/user';
+import { User } from '@supabase/supabase-js';
 
 export type SchoolData = {
   schoolName: string;
@@ -11,19 +12,19 @@ export type SchoolData = {
 };
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   userRole: UserRole | null;
   loading: boolean;
   isSuperAdmin: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; data?: any; }>;
-  signup: (email: string, password: string, schoolData: SchoolData) => Promise<{ success: boolean; error?: string; data?: any; }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string; data?: User; }>;
+  signup: (email: string, password: string, schoolData: SchoolData) => Promise<{ success: boolean; error?: string; data?: User; }>;
   logout: () => Promise<{ success: boolean; error?: string; }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const navigate = useNavigate();
@@ -104,7 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: error.message,
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
       }
       
       toast({
@@ -112,19 +113,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "Welcome back to ScoreDesk!",
       });
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Login failed",
-        description: error.message || "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
   };
 
   const signup = async (email: string, password: string, schoolData: SchoolData) => {
     try {
-      let isSuperAdmin = window.location.pathname === '/signup';
+      const isSuperAdmin = window.location.pathname === '/signup';
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -144,7 +145,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: error.message,
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
       }
 
       toast({
@@ -154,13 +155,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           : "Welcome to ScoreDesk!",
       });
       return { success: true, data };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Signup failed",
-        description: error.message || "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
   };
 
@@ -174,7 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           description: error.message,
           variant: "destructive",
         });
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
       }
       
       setUser(null);
@@ -185,13 +186,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: "You've been successfully logged out",
       });
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Logout failed",
-        description: error.message || "An unexpected error occurred",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
   };
 

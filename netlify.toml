@@ -1,0 +1,51 @@
+[build]
+  # Build command (adjust if you use different build tool)
+  command = "npm run build"
+  
+  # Directory to publish (adjust if your build output is different)
+  publish = "dist"
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+
+# Redirect rules for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Optional: Handle API routes if you have backend
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://your-backend-domain.com/api/:splat"
+#   status = 200
+
+# Optional: Handle authentication callbacks
+# [[redirects]]
+#   from = "/auth/callback"
+#   to = "/auth/callback"
+#   status = 200
+
+# Optional: Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Optional: Cache static assets
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Optional: Handle CORS for your Supabase API
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"

@@ -16,6 +16,8 @@ import { exportUsersToExcel, exportUsersToPDF } from "@/utils/userExport";
 import { RoleAssignmentDialog } from "@/components/RoleAssignmentDialog";
 import { UserEditDialog } from "@/components/UserEditDialog";
 import { UserPasswordDialog } from "@/components/UserPasswordDialog";
+import { TeacherAssignmentDialog } from "@/components/TeacherAssignmentDialog";
+import { useSchoolId } from '@/hooks/use-school-id';
 
 interface UserWithRole {
   id: string;
@@ -36,12 +38,63 @@ const ROLES = [
 const PAGE_SIZE = 10;
 
 const ManageUsers = () => {
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
+  
   const { data: usersData, loading, error, refetch } = useSupabaseQuery<UserWithRole[]>(
     async () => {
-      const { data, error } = await supabase.rpc('get_manageable_users');
-      return { data, error: error ? error.message : null };
+      if (!schoolId) {
+        return { data: [], error: null };
+      }
+
+      try {
+        // First, get all profiles from the current school
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, school_name, school_id')
+          .eq('school_id', schoolId)
+          .order('full_name');
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          return { data: null, error: profilesError.message };
+        }
+
+        if (!profiles || profiles.length === 0) {
+          return { data: [], error: null };
+        }
+
+        // Then get user roles for these profiles
+        const userIds = profiles.map(p => p.id);
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role, school_id')
+          .in('user_id', userIds)
+          .eq('school_id', schoolId);
+
+        if (rolesError) {
+          console.error('Error fetching user roles:', rolesError);
+          return { data: null, error: rolesError.message };
+        }
+
+        // Transform data to match expected format
+        const transformedData = profiles.map(profile => {
+          const userRole = userRoles?.find(role => role.user_id === profile.id);
+          return {
+            id: profile.id,
+            user_id: profile.id,
+            role: userRole?.role || 'No Role Assigned',
+            full_name: profile.full_name,
+            school_name: profile.school_name
+          };
+        });
+
+        return { data: transformedData, error: null };
+      } catch (err) {
+        console.error('Error in user query:', err);
+        return { data: null, error: err instanceof Error ? err.message : 'Unknown error' };
+      }
     },
-    []
+    [schoolId]
   );
   const users = usersData || [];
   const [roleTab, setRoleTab] = React.useState(ROLES[0]);
@@ -49,6 +102,7 @@ const ManageUsers = () => {
   const [showRoleDialog, setShowRoleDialog] = React.useState(false);
   const [showEditDialog, setShowEditDialog] = React.useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = React.useState(false);
+  const [showAssignmentDialog, setShowAssignmentDialog] = React.useState(false);
   
   const filteredUsers = users.filter(u => u.role === roleTab ||
     (roleTab === "No Role Assigned" && (!ROLES.includes(u.role)))
@@ -84,6 +138,11 @@ const ManageUsers = () => {
   const handleShowPassword = (user: UserWithRole) => {
     setSelectedUser(user);
     setShowPasswordDialog(true);
+  };
+
+  const handleManageAssignments = (user: UserWithRole) => {
+    setSelectedUser(user);
+    setShowAssignmentDialog(true);
   };
 
   const handleDeleteUser = async (user: UserWithRole) => {
@@ -127,7 +186,7 @@ const ManageUsers = () => {
     }
   };
   
-  if (loading) {
+  if (loading || schoolIdLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -141,6 +200,19 @@ const ManageUsers = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-red-600 mb-2">Error loading users: {error}</p>
+          <Button onClick={refetch} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!schoolId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-600 mb-2">No school assigned. Please contact an administrator.</p>
           <Button onClick={refetch} variant="outline">
             Retry
           </Button>
@@ -237,7 +309,7 @@ const ManageUsers = () => {
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1 flex-wrap">
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -246,6 +318,16 @@ const ManageUsers = () => {
                                 <Shield className="h-4 w-4 mr-1" />
                                 Role
                               </Button>
+                              {user.role === 'Subject Teacher' && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleManageAssignments(user)}
+                                >
+                                  <Users className="h-4 w-4 mr-1" />
+                                  Assign
+                                </Button>
+                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -330,6 +412,13 @@ const ManageUsers = () => {
         open={showPasswordDialog}
         onOpenChange={setShowPasswordDialog}
         user={selectedUser}
+      />
+
+      <TeacherAssignmentDialog
+        open={showAssignmentDialog}
+        onOpenChange={setShowAssignmentDialog}
+        teacher={selectedUser}
+        onAssignmentsUpdated={refetch}
       />
     </div>
   );

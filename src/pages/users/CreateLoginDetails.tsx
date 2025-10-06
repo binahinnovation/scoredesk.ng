@@ -188,20 +188,40 @@ const CreateLoginDetails = () => {
     const previews: LoginPreview[] = [];
 
     if (selectedRole === 'Subject Teacher') {
-      selectedSubjects.forEach(subject => {
-        selectedClasses.forEach(className => {
-          const username = generateUsername(selectedRole, subject, className);
-          previews.push({
-            username,
-          email: `${username}.${sanitizeDomain(schoolAlias)}@gmail.com`,
-            role: selectedRole,
-            subjects: [subject],
-            classes: [className],
-            password: generatePassword()
-          });
+      // NEW: Create one teacher with multiple subjects and classes
+      if (selectedSubjects.length === 0 || selectedClasses.length === 0) {
+        toast({
+          title: "Missing Information",
+          description: "Please select at least one subject and one class for Subject Teacher",
+          variant: "destructive",
         });
+        return;
+      }
+
+      // Generate a single username based on first subject or generic pattern
+      const primarySubject = selectedSubjects[0];
+      const username = selectedSubjects.length === 1 
+        ? generateUsername(selectedRole, primarySubject)
+        : `teacher_${primarySubject.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}_${selectedSubjects.length}subjects`;
+      
+      previews.push({
+        username,
+        email: `${username}.${sanitizeDomain(schoolAlias)}@gmail.com`,
+        role: selectedRole,
+        subjects: selectedSubjects, // All selected subjects
+        classes: selectedClasses,   // All selected classes
+        password: generatePassword()
       });
     } else if (selectedRole === 'Form Teacher') {
+      if (selectedClasses.length === 0) {
+        toast({
+          title: "Missing Information",
+          description: "Please select at least one class for Form Teacher",
+          variant: "destructive",
+        });
+        return;
+      }
+
       selectedClasses.forEach(className => {
         const username = generateUsername(selectedRole, undefined, className);
         previews.push({
@@ -310,7 +330,7 @@ const CreateLoginDetails = () => {
       await ensureClassesAndSubjectsExist();
 
       const createdUsers = [];
-      let failedUsers = [];
+      const failedUsers = [];
 
       addDebugLog(`Attempting to create ${loginPreviews.length} user accounts...`);
 
@@ -383,7 +403,7 @@ const CreateLoginDetails = () => {
             return null;
           };
 
-          let newUserId: string | null = await findProfileId();
+          const newUserId: string | null = await findProfileId();
 
           // Only assign role if we have a valid user ID
           if (authError) {
@@ -405,6 +425,58 @@ const CreateLoginDetails = () => {
               addDebugLog(`Role creation error for ${preview.email}: ${roleError.message}`);
             } else {
               addDebugLog(`Successfully created role for user: ${newUserId}`);
+            }
+
+            // NEW: Create teacher assignments for Subject Teachers
+            if (preview.role === 'Subject Teacher' && preview.subjects.length > 0 && preview.classes.length > 0) {
+              addDebugLog(`Creating teacher assignments for ${preview.email}: ${preview.subjects.length} subjects, ${preview.classes.length} classes`);
+              
+              try {
+                // Get subject and class IDs from the database
+                const { data: subjectsData } = await supabase
+                  .from('subjects')
+                  .select('id, name')
+                  .eq('school_id', schoolId)
+                  .in('name', preview.subjects);
+
+                const { data: classesData } = await supabase
+                  .from('classes')
+                  .select('id, name')
+                  .eq('school_id', schoolId)
+                  .in('name', preview.classes);
+
+                if (subjectsData && classesData) {
+                  // Create assignments for each subject-class combination
+                  const assignments = [];
+                  for (const subject of subjectsData) {
+                    for (const classData of classesData) {
+                      assignments.push({
+                        teacher_id: newUserId,
+                        subject_id: subject.id,
+                        class_id: classData.id,
+                        school_id: schoolId,
+                        assigned_by: principalUserId
+                      });
+                    }
+                  }
+
+                  if (assignments.length > 0) {
+                    const { error: assignmentError } = await supabase
+                      .from('teacher_assignments')
+                      .insert(assignments);
+
+                    if (assignmentError) {
+                      addDebugLog(`Teacher assignment error for ${preview.email}: ${assignmentError.message}`);
+                    } else {
+                      addDebugLog(`Successfully created ${assignments.length} teacher assignments for user: ${newUserId}`);
+                    }
+                  }
+                } else {
+                  addDebugLog(`Could not find subjects or classes for assignments for ${preview.email}`);
+                }
+              } catch (assignmentErr) {
+                addDebugLog(`Error creating teacher assignments for ${preview.email}: ${assignmentErr}`);
+              }
             }
 
             // Update profile with school_id and school_name (in case trigger misses)
@@ -462,6 +534,57 @@ const CreateLoginDetails = () => {
               addDebugLog(`Manual user_role insert error: ${manualRoleError.message}`);
             } else {
               addDebugLog('Manual user_role insert succeeded.');
+              
+              // NEW: Create teacher assignments for Subject Teachers in manual fallback
+              if (preview.role === 'Subject Teacher' && preview.subjects.length > 0 && preview.classes.length > 0) {
+                addDebugLog(`Creating teacher assignments in manual fallback for ${preview.email}`);
+                
+                try {
+                  // Get subject and class IDs from the database
+                  const { data: subjectsData } = await supabase
+                    .from('subjects')
+                    .select('id, name')
+                    .eq('school_id', schoolId)
+                    .in('name', preview.subjects);
+
+                  const { data: classesData } = await supabase
+                    .from('classes')
+                    .select('id, name')
+                    .eq('school_id', schoolId)
+                    .in('name', preview.classes);
+
+                  if (subjectsData && classesData) {
+                    // Create assignments for each subject-class combination
+                    const assignments = [];
+                    for (const subject of subjectsData) {
+                      for (const classData of classesData) {
+                        assignments.push({
+                          teacher_id: manualUserId,
+                          subject_id: subject.id,
+                          class_id: classData.id,
+                          school_id: schoolId,
+                          assigned_by: principalUserId
+                        });
+                      }
+                    }
+
+                    if (assignments.length > 0) {
+                      const { error: assignmentError } = await supabase
+                        .from('teacher_assignments')
+                        .insert(assignments);
+
+                      if (assignmentError) {
+                        addDebugLog(`Manual teacher assignment error for ${preview.email}: ${assignmentError.message}`);
+                      } else {
+                        addDebugLog(`Successfully created ${assignments.length} teacher assignments in manual fallback for user: ${manualUserId}`);
+                      }
+                    }
+                  }
+                } catch (assignmentErr) {
+                  addDebugLog(`Error creating teacher assignments in manual fallback for ${preview.email}: ${assignmentErr}`);
+                }
+              }
+              
               createdUsers.push(preview);
             }
           }
@@ -596,7 +719,14 @@ const CreateLoginDetails = () => {
             {/* Subjects */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Subjects</Label>
+                <div>
+                  <Label>Subjects</Label>
+                  {selectedRole === 'Subject Teacher' && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Select 2-5 subjects for multi-subject teachers
+                    </p>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -671,7 +801,14 @@ const CreateLoginDetails = () => {
 
             {/* Classes */}
             <div className="space-y-2">
-              <Label>Classes</Label>
+              <div>
+                <Label>Classes</Label>
+                {selectedRole === 'Subject Teacher' && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Select 3-5 classes for multi-class teachers
+                  </p>
+                )}
+              </div>
               <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
                 {CLASSES.map((className) => (
                   <div key={className} className="flex items-center space-x-2">

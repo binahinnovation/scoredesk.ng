@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Calendar, Clock, Archive, Settings2 } from 'lucide-react';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 interface Term {
   id: string;
@@ -28,6 +29,7 @@ interface CurrentTermSetting {
 }
 
 const TermManagement = () => {
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [newTermName, setNewTermName] = useState('');
   const [newAcademicYear, setNewAcademicYear] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -36,21 +38,27 @@ const TermManagement = () => {
 
   const { data: termsData, loading: termsLoading, refetch: refetchTerms } = useSupabaseQuery<Term[]>(
     async () => {
+      if (!schoolId) return { data: [], error: null };
+
       const { data, error } = await supabase
         .from('terms')
         .select('*')
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
       return { data, error };
     },
-    []
+    [schoolId]
   );
 
   const { data: currentTermData, loading: settingsLoading, refetch: refetchSettings } = useSupabaseQuery<CurrentTermSetting>(
     async () => {
+      if (!schoolId) return { data: null, error: null };
+
       const { data, error } = await supabase
         .from('settings')
         .select('setting_value')
         .eq('setting_key', 'current_term')
+        .eq('school_id', schoolId)
         .single();
       
       if (data && typeof data.setting_value === 'object' && data.setting_value !== null) {
@@ -66,7 +74,7 @@ const TermManagement = () => {
       }
       return { data: null, error };
     },
-    []
+    [schoolId]
   );
 
   const terms = termsData || [];
@@ -82,6 +90,15 @@ const TermManagement = () => {
       return;
     }
 
+    if (!schoolId) {
+      toast({
+        title: "Error",
+        description: "School ID not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('terms')
@@ -90,7 +107,8 @@ const TermManagement = () => {
           academic_year: newAcademicYear,
           start_date: startDate,
           end_date: endDate,
-          is_current: false
+          is_current: false,
+          school_id: schoolId
         });
 
       if (error) throw error;

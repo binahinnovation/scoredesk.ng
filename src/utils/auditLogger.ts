@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserSchoolId } from "@/hooks/use-school-id";
 
 interface LogEditParams {
   schoolId: string;
@@ -41,26 +42,5 @@ export async function logEdit({
   }
 }
 
-// Helper function to get current user's school ID
-export async function getCurrentUserSchoolId(): Promise<string | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('school_id')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      console.error("Error fetching user's school ID:", error);
-      return null;
-    }
-
-    return profile?.school_id || null;
-  } catch (err) {
-    console.error("Unexpected error fetching school ID:", err);
-    return null;
-  }
-}
+// Re-export for backwards compatibility
+export { getCurrentUserSchoolId };

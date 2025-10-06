@@ -15,6 +15,6 @@ export const rolePermissionMatrix = [
   { name: "Analytics Dashboard", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
   { name: "Settings", principal: true, examOfficer: false, formTeacher: false, subjectTeacher: false },
   { name: "Assessment Management", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
-  { name: "Attendance Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: true },
+  { name: "Attendance Management", principal: true, examOfficer: true, formTeacher: true, subjectTeacher: false },
   { name: "Audit Logs", principal: true, examOfficer: true, formTeacher: false, subjectTeacher: false },
 ];

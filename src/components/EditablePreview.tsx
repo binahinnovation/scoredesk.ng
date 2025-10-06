@@ -55,6 +55,13 @@ export const EditablePreview: React.FC<EditablePreviewProps> = ({
   onUpdate
 }) => {
   const [isEditMode, setIsEditMode] = useState(false);
+  
+  // Helper function to strip HTML tags
+  const stripHtmlTags = (html: string): string => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
   const [settings, setSettings] = useState<DocumentSettings>({
     examDuration: '2 Hours',
     instructions: [
@@ -184,7 +191,8 @@ export const EditablePreview: React.FC<EditablePreviewProps> = ({
       pdf.setFontSize(11);
       pdf.text(`${index + 1}.`, 20, yPos);
       
-      const lines = pdf.splitTextToSize(question.question_text, 170);
+      const cleanText = stripHtmlTags(question.question_text);
+      const lines = pdf.splitTextToSize(cleanText, 170);
       pdf.text(lines, 30, yPos);
       yPos += lines.length * 6;
       
@@ -468,7 +476,7 @@ export const EditablePreview: React.FC<EditablePreviewProps> = ({
                   <div className="flex items-start gap-2">
                     <span className="font-semibold">{index + 1}.</span>
                     <div className="flex-1">
-                      <p className="mb-2">{question.question_text}</p>
+                      <p className="mb-2">{stripHtmlTags(question.question_text)}</p>
                       <p className="text-xs text-gray-600">
                         [{question.marks} mark{question.marks > 1 ? 's' : ''} - {question.question_type}]
                       </p>

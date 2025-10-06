@@ -13,6 +13,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useSchoolId } from "@/hooks/use-school-id";
 
 interface ResultWithDetails {
   id: string;
@@ -44,6 +45,7 @@ interface ResultWithDetails {
 export default function ResultApproval() {
   const { userRole, loading, hasPermission } = useUserRole();
   const { user } = useAuth();
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [results, setResults] = useState<ResultWithDetails[]>([]);
   const [filteredResults, setFilteredResults] = useState<ResultWithDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,6 +60,12 @@ export default function ResultApproval() {
   const [fetchAttempts, setFetchAttempts] = useState(0);
 
   const fetchData = async () => {
+    if (!schoolId) {
+      console.warn('No school_id available for result approval');
+      setLoadingData(false);
+      return;
+    }
+
     if (fetchAttempts >= 3) {
       console.log("Max fetch attempts reached, stopping...");
       setError("Maximum fetch attempts reached. Please try refreshing the page.");
@@ -71,7 +79,7 @@ export default function ResultApproval() {
     setFetchAttempts(prev => prev + 1);
     
     try {
-      // Fetch results with basic data first
+      // Fetch results with basic data first - FILTERED BY SCHOOL
       console.log("Fetching results...");
       const { data: resultsData, error: resultsError } = await supabase
         .from("results")
@@ -89,6 +97,7 @@ export default function ResultApproval() {
           assessment_id,
           term_id
         `)
+        .eq("school_id", schoolId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -107,13 +116,13 @@ export default function ResultApproval() {
         return;
       }
 
-      // Fetch related data with error handling
+      // Fetch related data with error handling - FILTERED BY SCHOOL
       const [studentsRes, subjectsRes, assessmentsRes, termsRes, classesRes] = await Promise.allSettled([
-        supabase.from("students").select("id, first_name, last_name, student_id, class_id"),
-        supabase.from("subjects").select("id, name, code"),
-        supabase.from("assessments").select("id, name, max_score"),
-        supabase.from("terms").select("id, name, academic_year"),
-        supabase.from("classes").select("id, name")
+        supabase.from("students").select("id, first_name, last_name, student_id, class_id").eq("school_id", schoolId),
+        supabase.from("subjects").select("id, name, code").eq("school_id", schoolId),
+        supabase.from("assessments").select("id, name, max_score").eq("school_id", schoolId),
+        supabase.from("terms").select("id, name, academic_year").eq("school_id", schoolId),
+        supabase.from("classes").select("id, name").eq("school_id", schoolId)
       ]);
 
       // Handle each result safely
@@ -171,10 +180,10 @@ export default function ResultApproval() {
   };
 
   useEffect(() => {
-    if (hasPermission("Result Approval") && !loadingData && results.length === 0 && fetchAttempts === 0) {
+    if (hasPermission("Result Approval") && !loadingData && results.length === 0 && fetchAttempts === 0 && schoolId && !schoolIdLoading) {
       fetchData();
     }
-  }, [hasPermission]);
+  }, [hasPermission, schoolId, schoolIdLoading]);
 
   useEffect(() => {
     filterResults();

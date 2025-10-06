@@ -5,6 +5,7 @@ import { AlertCircle, Users, BookOpen, GraduationCap, TrendingUp, TrendingDown }
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { useSchoolId } from "@/hooks/use-school-id";
 
 interface AnalyticsData {
   totalStudents: number;
@@ -19,6 +20,7 @@ interface AnalyticsData {
 
 export default function AnalyticsDashboard() {
   const { userRole, loading: userRoleLoading, hasPermission } = useUserRole(); // Renamed loading to avoid conflict
+  const { schoolId, loading: schoolIdLoading } = useSchoolId();
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalStudents: 0,
     totalTeachers: 0,
@@ -37,35 +39,41 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     const canViewAnalytics = hasPermission("Analytics Dashboard");
-    if (userRoleLoading) {
-      // Still waiting for user role to be determined
+    if (userRoleLoading || schoolIdLoading) {
+      // Still waiting for user role or school_id to be determined
       return;
     }
     
-    if (canViewAnalytics) {
+    if (canViewAnalytics && schoolId) {
       fetchAnalytics();
     } else {
       setLoadingData(false);
     }
-  }, [hasPermission, selectedTerm, userRoleLoading]);
+  }, [hasPermission, selectedTerm, userRoleLoading, schoolId, schoolIdLoading]);
 
   const fetchAnalytics = async () => {
+    if (!schoolId) {
+      console.warn('No school_id available for analytics');
+      setLoadingData(false);
+      return;
+    }
+
     setLoadingData(true);
     try {
-      // Fetch basic counts
+      // Fetch basic counts - FILTERED BY SCHOOL
       const [studentsResult, teachersResult, subjectsResult, classesResult, termsResult] = await Promise.all([
-        supabase.from("students").select("id", { count: "exact" }),
-        supabase.from("user_roles").select("id", { count: "exact" }).neq("role", "Principal"),
-        supabase.from("subjects").select("id", { count: "exact" }),
-        supabase.from("classes").select("id", { count: "exact" }),
-        supabase.from("terms").select("*").order("created_at", { ascending: false })
+        supabase.from("students").select("id", { count: "exact" }).eq("school_id", schoolId),
+        supabase.from("user_roles").select("id", { count: "exact" }).eq("school_id", schoolId).neq("role", "Principal"),
+        supabase.from("subjects").select("id", { count: "exact" }).eq("school_id", schoolId),
+        supabase.from("classes").select("id", { count: "exact" }).eq("school_id", schoolId),
+        supabase.from("terms").select("*").eq("school_id", schoolId).order("created_at", { ascending: false })
       ]);
 
       if (teachersResult.error) {
         console.error("Error fetching teachers count:", teachersResult.error);
       }
 
-      // Fetch results for analytics
+      // Fetch results for analytics - FILTERED BY SCHOOL
       let resultsQuery = supabase
         .from("results")
         .select(`
@@ -75,7 +83,8 @@ export default function AnalyticsDashboard() {
           subjects:subject_id (name),
           assessments:assessment_id (max_score),
           terms:term_id (name)
-        `);
+        `)
+        .eq("school_id", schoolId);
 
       if (selectedTerm !== "all") {
         resultsQuery = resultsQuery.eq("term_id", selectedTerm);
