@@ -34,19 +34,13 @@ export default function MainLayout() {
   return (
     <div className={`min-h-screen font-roboto bg-gray-50 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
       <MainNav onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="flex">
+      <div className="flex h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)]">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-        <main className={`
-          flex-1 pt-14 sm:pt-16 pb-12 transition-all duration-300 ease-in-out
-          ${sidebarOpen 
-            ? 'ml-12 sm:ml-14 md:ml-16 lg:ml-64' 
-            : 'ml-0 sm:ml-0 md:ml-12 lg:ml-16'
-          }
-        `}>
+        <main className="flex-1 pt-0 pb-12 transition-all duration-300 ease-in-out overflow-x-auto">
           <div className={`
-            p-3 sm:p-4 md:p-6 transition-opacity duration-500 
+            p-2 sm:p-3 md:p-4 lg:p-4 transition-opacity duration-500 
             ${mounted ? 'opacity-100' : 'opacity-0'}
-            min-h-[calc(100vh-4rem)] overflow-x-auto
+            min-h-full
           `}>
             <Outlet />
           </div>
