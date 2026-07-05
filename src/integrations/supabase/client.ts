@@ -2,8 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://pvptekcpmmuwonnlemjq.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cHRla2NwbW11d29ubmxlbWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDk4MjIsImV4cCI6MjA2Njc4NTgyMn0.FX_6-LXX44e0O2ghVOa87AacxTlMgZjd_BjIouCXSxQ";
+// Uses Vite env vars (set in Netlify dashboard or .env file)
+// Fallback to hardcoded values for convenience during development
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://vjadxhdmpptzynbdzbyi.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqYWR4aGRtcHB0enluYmR6YnlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwODUwODAsImV4cCI6MjA5NzY2MTA4MH0.uZI6vVqYB75X0eOzYwrGvGckrf-UOZOuATGSqQ9hPUQ";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
