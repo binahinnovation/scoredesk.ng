@@ -23,7 +23,18 @@ import {
   Send,
   Inbox,
   PenTool,
-  Shield
+  Shield,
+  Calendar,
+  BookOpen,
+  Wallet,
+  CreditCard,
+  MessageSquare,
+  Briefcase,
+  MonitorPlay,
+  Cloud,
+  DatabaseBackup,
+  TrendingUp,
+  BarChart3 as ChartBarIcon
 } from "lucide-react";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -532,6 +543,258 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                   </NavLink>
                 )}
 
+{hasPermission("Settings") && (
+                  <NavLink to="/lesson-plans">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <BookOpen className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>AI Lesson Plans</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/timetable">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Calendar className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>AI Timetable</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/finance/fees">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Wallet className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Fee Management</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/finance/payments">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <CreditCard className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Student Fees</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/finance/reports">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <ChartBarIcon className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Finance Reports</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/sms">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <MessageSquare className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>SMS Notifications</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("User Management") && (
+                  <NavLink to="/staff">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Briefcase className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Staff Directory</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/cbt">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <MonitorPlay className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>CBT Management</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/academic-calendar">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Calendar className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Academic Calendar</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Analytics Dashboard") && (
+                  <NavLink to="/analytics/performance">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <TrendingUp className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Performance Tracker</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/settings/storage">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <Cloud className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Cloud Storage</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
+{hasPermission("Settings") && (
+                  <NavLink to="/settings/backup">
+                    {({ isActive }) => (
+                      <Button
+                        variant={isActive ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                          isActive && "bg-emerald-800 text-white",
+                          !open && "px-0 justify-center"
+                        )}
+                        size="sm"
+                      >
+                        <DatabaseBackup className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                        <span className={cn("transition-all duration-300", 
+                          open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                        )}>Data Backup</span>
+                      </Button>
+                    )}
+                  </NavLink>
+                )}
+
                 {hasPermission("User Management") && (
                   <NavLink to="/admin/logs">
                     {({ isActive }) => (
@@ -581,6 +844,46 @@ export function Sidebar({ className, open, setOpen }: SidebarProps) {
                     <span className={cn("transition-all duration-300", 
                       open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
                     )}>Result Portal</span>
+                  </Button>
+                </a>
+                <a 
+                  href="/parent-portal" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                      !open && "px-0 justify-center"
+                    )}
+                    size="sm"
+                  >
+                    <ExternalLink className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                    <span className={cn("transition-all duration-300", 
+                      open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                    )}>Parent Portal</span>
+                  </Button>
+                </a>
+                <a 
+                  href="/cbt-portal" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-white hover:bg-emerald-600 hover:text-white",
+                      !open && "px-0 justify-center"
+                    )}
+                    size="sm"
+                  >
+                    <ExternalLink className={cn("h-4 w-4", open ? "mr-2" : "mr-0")} />
+                    <span className={cn("transition-all duration-300", 
+                      open ? "opacity-100" : "opacity-0 w-0 overflow-hidden"
+                    )}>CBT Portal</span>
                   </Button>
                 </a>
               </div>

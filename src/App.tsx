@@ -56,6 +56,38 @@ import DraftsPage from "./pages/messages/DraftsPage";
 import MessageViewPage from "./pages/messages/MessageViewPage";
 import ComposeMessagePage from "./pages/messages/ComposeMessagePage";
 
+// AI Features
+import LessonPlanGenerator from "./pages/LessonPlanGenerator";
+import TimetableManagement from "./pages/TimetableManagement";
+
+// Finance
+import FeeManagement from "./pages/finance/FeeManagement";
+import StudentFees from "./pages/finance/StudentFees";
+import FinanceReports from "./pages/finance/FinanceReports";
+
+// Communication
+import SMSNotifications from "./pages/communication/SMSNotifications";
+
+// Parent Portal
+import ParentPortal from "./pages/parents/ParentPortal";
+
+// Staff
+import StaffDirectory from "./pages/staff/StaffDirectory";
+
+// CBT
+import CBTExamManagement from "./pages/cbt/CBTExamManagement";
+import CBTStudentPortal from "./pages/students/CBTStudentPortal";
+
+// Academic Calendar
+import AcademicCalendar from "./pages/AcademicCalendar";
+
+// Analytics
+import StudentPerformanceTracker from "./pages/analytics/StudentPerformanceTracker";
+
+// Storage & Backup
+import CloudStorage from "./pages/settings/CloudStorage";
+import DataBackup from "./pages/settings/DataBackup";
+
 // Create a new client
 const queryClient = new QueryClient();
 
@@ -85,6 +117,8 @@ const AppRoutes = () => {
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/student-results" element={<StudentResultPortal />} />
+      <Route path="/parent-portal" element={<ParentPortal />} />
+      <Route path="/cbt-portal" element={<CBTStudentPortal />} />
       
       {/* Protected routes */}
       <Route path="/" element={
@@ -207,6 +241,82 @@ const AppRoutes = () => {
         <Route path="attendance/summary" element={
           <ProtectedRoute requiredPermission="Attendance Management">
             <AttendanceSummaryPage />
+          </ProtectedRoute>
+        } />
+
+        {/* AI Features */}
+        <Route path="lesson-plans" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <LessonPlanGenerator />
+          </ProtectedRoute>
+        } />
+        <Route path="timetable" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <TimetableManagement />
+          </ProtectedRoute>
+        } />
+
+        {/* Finance Routes */}
+        <Route path="finance/fees" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <FeeManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="finance/payments" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <StudentFees />
+          </ProtectedRoute>
+        } />
+        <Route path="finance/reports" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <FinanceReports />
+          </ProtectedRoute>
+        } />
+
+        {/* SMS Notifications */}
+        <Route path="sms" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <SMSNotifications />
+          </ProtectedRoute>
+        } />
+
+        {/* Staff Management */}
+        <Route path="staff" element={
+          <ProtectedRoute requiredPermission="User Management">
+            <StaffDirectory />
+          </ProtectedRoute>
+        } />
+
+        {/* CBT Management */}
+        <Route path="cbt" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <CBTExamManagement />
+          </ProtectedRoute>
+        } />
+
+        {/* Academic Calendar */}
+        <Route path="academic-calendar" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <AcademicCalendar />
+          </ProtectedRoute>
+        } />
+
+        {/* Student Performance Tracker */}
+        <Route path="analytics/performance" element={
+          <ProtectedRoute requiredPermission="Analytics Dashboard">
+            <StudentPerformanceTracker />
+          </ProtectedRoute>
+        } />
+
+        {/* Settings Routes */}
+        <Route path="settings/storage" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <CloudStorage />
+          </ProtectedRoute>
+        } />
+        <Route path="settings/backup" element={
+          <ProtectedRoute requiredPermission="Settings">
+            <DataBackup />
           </ProtectedRoute>
         } />
 
