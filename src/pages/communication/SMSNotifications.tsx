@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { sendSMS } from '@/utils/sms';
-import { Send, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 
 export default function SMSNotifications() {
   const { schoolId } = useSchoolId();
@@ -63,39 +62,59 @@ export default function SMSNotifications() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <MessageSquare className="h-8 w-8 text-green-600" />
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Premium Header */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50/50 rounded-xl p-6 border border-emerald-100 shadow-sm flex items-center gap-4">
+        <div className="p-3 bg-white rounded-lg shadow-sm border border-emerald-100 relative overflow-hidden">
+          <MessageSquare className="h-8 w-8 text-emerald-600 relative z-10" />
+          <div className="absolute top-0 right-0 -mt-2 -mr-2 text-emerald-200 opacity-50">
+            <Sparkles className="h-6 w-6" />
+          </div>
+        </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">SMS Notifications</h1>
-          <p className="text-gray-600">Send bulk SMS messages to parents and guardians.</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">SMS Notifications</h1>
+          <p className="text-gray-600 mt-1">Send bulk, personalized SMS messages directly to parents and guardians.</p>
         </div>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader><CardTitle>Compose Message</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+      <Card className="border-emerald-100 shadow-md">
+        <CardHeader className="bg-emerald-50/50 border-b border-emerald-50 pb-4">
+          <CardTitle className="text-lg flex items-center gap-2 text-emerald-900">
+            <Send className="h-5 w-5 text-emerald-600" /> Compose Message
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
           <div>
-            <label className="text-sm font-medium">Recipients</label>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Select Recipients</label>
             <Select value={recipientType} onValueChange={setRecipientType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="focus-visible:ring-emerald-500 bg-white"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all_parents">All Parents</SelectItem>
+                <SelectItem value="all_parents">All Parents (with registered phone numbers)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium">Message</label>
+            <div className="flex justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Message Body</label>
+              <span className={`text-xs font-medium ${message.length > 160 ? 'text-amber-600' : 'text-gray-400'}`}>
+                {message.length} / 160 characters {message.length > 160 && '(Multiple SMS)'}
+              </span>
+            </div>
             <Textarea 
               placeholder="Type your message here... Use {student_name} and {parent_name} for personalization."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={5}
+              rows={6}
+              className="focus-visible:ring-emerald-500 resize-none bg-white"
             />
-            <p className="text-xs text-gray-400 mt-1">{message.length}/160 characters</p>
+            <div className="mt-3 flex gap-2 flex-wrap">
+              <span className="text-xs text-gray-500 font-medium mr-2">Available Variables:</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono cursor-pointer hover:bg-gray-200" onClick={() => setMessage(prev => prev + '{student_name}')}>{`{student_name}`}</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono cursor-pointer hover:bg-gray-200" onClick={() => setMessage(prev => prev + '{parent_name}')}>{`{parent_name}`}</span>
+            </div>
           </div>
-          <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleSend} disabled={sending}>
-            {sending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</> : <><Send className="h-4 w-4 mr-2" /> Send SMS</>}
+          <Button className="w-full bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all text-white font-medium py-6" onClick={handleSend} disabled={sending}>
+            {sending ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Sending Messages...</> : <><Send className="h-5 w-5 mr-2" /> Send SMS to Parents</>}
           </Button>
         </CardContent>
       </Card>
